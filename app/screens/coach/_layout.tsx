@@ -2,14 +2,14 @@
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import React from 'react';
-import Dashboard from '../app/screens/coach/Dashboard';
-import EventsEditor from '../app/screens/coach/EventsEditor';
-import Forum from '../app/screens/coach/Forum';
-import NewsEditor from '../app/screens/coach/NewsEditor';
-import PlayerAnalytics from '../app/screens/coach/PlayerAnalytics';
-import RosterManager from '../app/screens/coach/RosterManager';
-import TacticalChatbot from "../app/screens/coach/TacticalChatbot";
-import TrainingPlanner from "../app/screens/coach/TrainingPlanner";
+import Dashboard from './Dashboard';
+import EventsEditor from './EventsEditor';
+import Forum from './Forum';
+import NewsEditor from './NewsEditor';
+import PlayerAnalytics from './PlayerAnalytics';
+import RosterManager from './RosterManager';
+import TacticalChatbot from "./TacticalChatbot";
+import TrainingPlanner from "./TrainingPlanner";
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();

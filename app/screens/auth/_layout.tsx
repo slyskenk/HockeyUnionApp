@@ -2,8 +2,8 @@
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import React from 'react';
-import Login from '../app/screens/auth/Login';
-import SignUp from '../app/screens/auth/SignUp';
+import Login from './Login';
+import SignUp from './SignUp';
 
 
 const Stack = createNativeStackNavigator();

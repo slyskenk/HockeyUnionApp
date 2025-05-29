@@ -2,16 +2,16 @@
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import React from 'react';
-import ChatbotManager from "../app/screens/admin/ChatbotManager";
-import Dashboard from '../app/screens/admin/Dashboard';
-import EventsManager from '../app/screens/admin/EventsManager';
-import forumModeration from '../app/screens/admin/ForumModeration';
-import ManageUsers from '../app/screens/admin/ManageUsers';
-import NewsManager from '../app/screens/admin/NewsManager';
-import Notification from '../app/screens/admin/Notification';
-import Reports from '../app/screens/admin/Reports';
-import RoleAccess from '../app/screens/admin/RoleAccess';
-import TeamsManager from '../app/screens/admin/TeamsManager';
+import ChatbotManager from "./ChatbotManager";
+import Dashboard from './Dashboard';
+import EventsManager from './EventsManager';
+import forumModeration from './ForumModeration';
+import ManageUsers from './ManageUsers';
+import NewsManager from './NewsManager';
+import Notification from './Notification';
+import Reports from './Reports';
+import RoleAccess from './RoleAccess';
+import TeamsManager from './TeamsManager';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
