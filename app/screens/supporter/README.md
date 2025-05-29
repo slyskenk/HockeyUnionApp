@@ -1,1 +1,0 @@
-# SUPPORTER LEAD
