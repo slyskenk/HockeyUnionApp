@@ -1,22 +1,463 @@
+import { MaterialIcons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useRouter } from 'expo-router'; // For navigation
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import {
+  Dimensions,
+  Image,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 
-export default function Dashboard() {
+const { width, height } = Dimensions.get('window');
+
+// --- Dummy Data ---
+
+const COACH_NAME = 'Coach John Doe';
+const COACH_TEAM = 'Desert Scorpions (Men)';
+
+const DUMMY_FIXTURES = [
+  { id: 'f1', date: 'June 10', time: '18:00', opponent: 'Oryx Chargers', location: 'National Stadium' },
+  { id: 'f2', date: 'June 17', time: '19:30', opponent: 'Windhoek Warriors', location: 'DTS Field' },
+];
+
+const DUMMY_TEAM_STATS = {
+  wins: 8,
+  losses: 2,
+  draws: 1,
+  goalsScored: 35,
+  goalsConceded: 12,
+  playersCount: 18,
+};
+
+const DUMMY_KEY_PLAYERS = [
+  { id: 'p1', name: 'Player One', jersey: 7, status: 'Top Scorer', avatar: 'https://placehold.co/40x40/FF5733/FFFFFF?text=P1' },
+  { id: 'p2', name: 'Player Two', jersey: 10, status: 'Injured (Minor)', avatar: 'https://placehold.co/40x40/33FF57/000000?text=P2' },
+  { id: 'p3', name: 'Player Three', jersey: 1, status: 'Goalkeeper', avatar: 'https://placehold.co/40x40/3357FF/FFFFFF?text=P3' },
+];
+
+const DUMMY_TRAINING = {
+  date: 'June 08, 2025',
+  time: '16:00 - 17:30',
+  location: 'National Hockey Stadium',
+  focus: 'Defensive Drills & Set Pieces',
+};
+
+const DUMMY_ANNOUNCEMENTS = [
+  { id: 'a1', text: 'Reminder: Coaching Clinic on June 20th. Register now!', type: 'info' },
+  { id: 'a2', text: 'New FIH Rule updates available in the Resources section.', type: 'alert' },
+];
+
+// --- CoachDashboard Component ---
+
+const CoachDashboard = () => {
+  const router = useRouter();
+
+  // Placeholder for navigation functions
+  const handleViewFullSchedule = () => {
+    console.log('Navigating to Full Schedule');
+    Alert.alert('Navigation', 'View Full Schedule not implemented.');
+    // router.push('/coach/fixtures');
+  };
+
+  const handleManagePlayers = () => {
+    console.log('Navigating to Manage Players');
+    Alert.alert('Navigation', 'Manage Players not implemented.');
+    // router.push('/coach/my-team-players');
+  };
+
+  const handleViewTrainingPlan = () => {
+    console.log('Navigating to Training Plan');
+    Alert.alert('Navigation', 'View Training Plan not implemented.');
+    // router.push('/coach/training-plan');
+  };
+
+  const handleGoToTeamChat = () => {
+    console.log('Navigating to Team Chat');
+    Alert.alert('Navigation', 'Go to Team Chat not implemented.');
+    // router.push('/coach/team-chat');
+  };
+
   return (
     <View style={styles.container}>
-      <Text style={styles.text}>Coach Dashboard</Text>
+      {/* Gradient Header */}
+      <LinearGradient
+        colors={['#4A90E2', '#283593']} // Consistent gradient
+        start={{ x: 0, y: 0.5 }}
+        end={{ x: 1, y: 0.5 }}
+        style={styles.header}
+      >
+        <Image
+          source={require('../../../assets/images/logo.jpeg')} // Your logo
+          style={styles.headerLogo}
+          resizeMode="contain"
+        />
+        <View style={styles.headerTextContainer}>
+          <Text style={styles.welcomeText}>Welcome, {COACH_NAME}!</Text>
+          <Text style={styles.headerTitle}>Coach Dashboard</Text>
+        </View>
+        {/* Optional: Add a profile icon or settings icon here */}
+      </LinearGradient>
+
+      <ScrollView contentContainerStyle={styles.scrollViewContent}>
+
+        {/* Team Overview Card */}
+        <View style={styles.card}>
+          <View style={styles.cardHeader}>
+            <MaterialIcons name="sports-hockey" size={24} color="#007AFF" />
+            <Text style={styles.cardTitle}>Team Overview: {COACH_TEAM}</Text>
+          </View>
+          <View style={styles.statsRow}>
+            <View style={styles.statItem}>
+              <Text style={styles.statNumber}>{DUMMY_TEAM_STATS.wins}</Text>
+              <Text style={styles.statLabel}>Wins</Text>
+            </View>
+            <View style={styles.statItem}>
+              <Text style={styles.statNumber}>{DUMMY_TEAM_STATS.losses}</Text>
+              <Text style={styles.statLabel}>Losses</Text>
+            </View>
+            <View style={styles.statItem}>
+              <Text style={styles.statNumber}>{DUMMY_TEAM_STATS.playersCount}</Text>
+              <Text style={styles.statLabel}>Players</Text>
+            </View>
+          </View>
+          <TouchableOpacity style={styles.fullStatsButton}>
+            <Text style={styles.fullStatsButtonText}>View Detailed Stats</Text>
+            <MaterialIcons name="arrow-forward-ios" size={14} color="#007AFF" />
+          </TouchableOpacity>
+        </View>
+
+        {/* Upcoming Fixtures Card */}
+        <View style={styles.card}>
+          <View style={styles.cardHeader}>
+            <MaterialIcons name="event" size={24} color="#FF9500" />
+            <Text style={styles.cardTitle}>Upcoming Fixtures</Text>
+          </View>
+          {DUMMY_FIXTURES.map(fixture => (
+            <View key={fixture.id} style={styles.fixtureItem}>
+              <Text style={styles.fixtureDate}>{fixture.date}</Text>
+              <View style={styles.fixtureDetails}>
+                <Text style={styles.fixtureText}>{fixture.opponent}</Text>
+                <Text style={styles.fixtureLocation}>{fixture.location} at {fixture.time}</Text>
+              </View>
+            </View>
+          ))}
+          <TouchableOpacity style={styles.viewAllButton} onPress={handleViewFullSchedule}>
+            <Text style={styles.viewAllButtonText}>View Full Schedule</Text>
+            <MaterialIcons name="chevron-right" size={20} color="#007AFF" />
+          </TouchableOpacity>
+        </View>
+
+        {/* Quick Player Access Card */}
+        <View style={styles.card}>
+          <View style={styles.cardHeader}>
+            <MaterialIcons name="groups" size={24} color="#34C759" />
+            <Text style={styles.cardTitle}>Quick Player Access</Text>
+          </View>
+          {DUMMY_KEY_PLAYERS.map(player => (
+            <View key={player.id} style={styles.playerQuickItem}>
+              <Image source={{ uri: player.avatar }} style={styles.playerAvatar} />
+              <View style={styles.playerQuickInfo}>
+                <Text style={styles.playerQuickName}>{player.name} #{player.jersey}</Text>
+                <Text style={styles.playerQuickStatus}>{player.status}</Text>
+              </View>
+            </View>
+          ))}
+          <TouchableOpacity style={styles.viewAllButton} onPress={handleManagePlayers}>
+            <Text style={styles.viewAllButtonText}>Manage My Players</Text>
+            <MaterialIcons name="chevron-right" size={20} color="#007AFF" />
+          </TouchableOpacity>
+        </View>
+
+        {/* Training Schedule Card */}
+        <View style={styles.card}>
+          <View style={styles.cardHeader}>
+            <MaterialIcons name="fitness-center" size={24} color="#5856D6" />
+            <Text style={styles.cardTitle}>Next Training Session</Text>
+          </View>
+          <View style={styles.trainingDetails}>
+            <Text style={styles.trainingText}><MaterialIcons name="date-range" size={16} color="#333" /> {DUMMY_TRAINING.date}</Text>
+            <Text style={styles.trainingText}><MaterialIcons name="access-time" size={16} color="#333" /> {DUMMY_TRAINING.time}</Text>
+            <Text style={styles.trainingText}><MaterialIcons name="location-on" size={16} color="#333" /> {DUMMY_TRAINING.location}</Text>
+            <Text style={styles.trainingFocus}>Focus: {DUMMY_TRAINING.focus}</Text>
+          </View>
+          <TouchableOpacity style={styles.viewAllButton} onPress={handleViewTrainingPlan}>
+            <Text style={styles.viewAllButtonText}>View Full Training Plan</Text>
+            <MaterialIcons name="chevron-right" size={20} color="#007AFF" />
+          </TouchableOpacity>
+        </View>
+
+        {/* Recent Coach Announcements Card */}
+        <View style={styles.card}>
+          <View style={styles.cardHeader}>
+            <MaterialIcons name="campaign" size={24} color="#FF3B30" />
+            <Text style={styles.cardTitle}>Coach Announcements</Text>
+          </View>
+          {DUMMY_ANNOUNCEMENTS.map(announcement => (
+            <View key={announcement.id} style={styles.announcementItem}>
+              <MaterialIcons
+                name={announcement.type === 'info' ? 'info-outline' : 'warning-amber'}
+                size={20}
+                color={announcement.type === 'info' ? '#007AFF' : '#FF3B30'}
+                style={{ marginRight: 10 }}
+              />
+              <Text style={styles.announcementText}>{announcement.text}</Text>
+            </View>
+          ))}
+          <TouchableOpacity style={styles.viewAllButton}>
+            <Text style={styles.viewAllButtonText}>View All Announcements</Text>
+            <MaterialIcons name="chevron-right" size={20} color="#007AFF" />
+          </TouchableOpacity>
+        </View>
+
+        {/* Communication Hub Card */}
+        <View style={styles.card}>
+          <View style={styles.cardHeader}>
+            <MaterialIcons name="chat" size={24} color="#FFD700" />
+            <Text style={styles.cardTitle}>Communication Hub</Text>
+          </View>
+          <TouchableOpacity style={styles.communicationButton} onPress={handleGoToTeamChat}>
+            <MaterialIcons name="message" size={20} color="#007AFF" />
+            <Text style={styles.communicationButtonText}>Team Chat</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.communicationButton}>
+            <MaterialIcons name="mail-outline" size={20} color="#007AFF" />
+            <Text style={styles.communicationButtonText}>Direct Messages</Text>
+          </TouchableOpacity>
+        </View>
+
+      </ScrollView>
     </View>
   );
-}
+};
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#f0f2f5', // Light background
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingTop: 50,
+    paddingBottom: 20, // More padding for gradient effect
+    paddingHorizontal: 20,
+    borderBottomLeftRadius: 20, // Rounded bottom corners for header
+    borderBottomRightRadius: 20,
+    overflow: 'hidden', // Ensures gradient respects border radius
+  },
+  headerLogo: {
+    width: 60,
+    height: 60,
+    marginRight: 15,
+  },
+  headerTextContainer: {
+    flex: 1,
+  },
+  welcomeText: {
+    fontSize: 16,
+    color: '#fff',
+    opacity: 0.8,
+  },
+  headerTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#fff',
+    marginTop: 2,
+  },
+  scrollViewContent: {
+    padding: 15,
+    paddingBottom: 30, // Extra padding at bottom
+  },
+  card: {
+    backgroundColor: '#fff',
+    borderRadius: 15,
+    padding: 20,
+    marginBottom: 15,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 5,
+    elevation: 8,
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+    paddingBottom: 10,
+  },
+  cardTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#333',
+    marginLeft: 10,
+  },
+
+  // Team Overview Styles
+  statsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginBottom: 15,
+  },
+  statItem: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  statNumber: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: '#007AFF',
+  },
+  statLabel: {
+    fontSize: 14,
+    color: '#666',
+    marginTop: 5,
+  },
+  fullStatsButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
     justifyContent: 'center',
+    paddingVertical: 10,
+    borderRadius: 10,
+    backgroundColor: '#E6F3FA', // Light blue background
+  },
+  fullStatsButtonText: {
+    color: '#007AFF',
+    fontSize: 16,
+    fontWeight: '600',
+    marginRight: 5,
+  },
+
+  // Fixtures Styles
+  fixtureItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 10,
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f5f5f5',
+  },
+  fixtureDate: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#333',
+    width: 80, // Fixed width for date
+  },
+  fixtureDetails: {
+    flex: 1,
+    marginLeft: 10,
+  },
+  fixtureText: {
+    fontSize: 16,
+    color: '#333',
+    fontWeight: '500',
+  },
+  fixtureLocation: {
+    fontSize: 13,
+    color: '#666',
+    marginTop: 2,
+  },
+  viewAllButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    marginTop: 10,
+    paddingVertical: 5,
+  },
+  viewAllButtonText: {
+    color: '#007AFF',
+    fontSize: 14,
+    fontWeight: '600',
+    marginRight: 5,
+  },
+
+  // Player Quick Access Styles
+  playerQuickItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 10,
+    paddingVertical: 5,
+  },
+  playerAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    marginRight: 10,
+    backgroundColor: '#ddd',
+  },
+  playerQuickInfo: {
+    flex: 1,
+  },
+  playerQuickName: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#333',
+  },
+  playerQuickStatus: {
+    fontSize: 12,
+    color: '#666',
+    marginTop: 2,
+  },
+
+  // Training Schedule Styles
+  trainingDetails: {
+    marginBottom: 15,
+  },
+  trainingText: {
+    fontSize: 15,
+    color: '#333',
+    marginBottom: 5,
+    flexDirection: 'row',
     alignItems: 'center',
   },
-  text: {
-    fontSize: 24,
+  trainingFocus: {
+    fontSize: 14,
+    color: '#666',
+    fontStyle: 'italic',
+    marginTop: 10,
+  },
+
+  // Announcements Styles
+  announcementItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 10,
+    paddingVertical: 5,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f5f5f5',
+  },
+  announcementText: {
+    flex: 1,
+    fontSize: 15,
+    color: '#333',
+  },
+
+  // Communication Hub Styles
+  communicationButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#E6F3FA',
+    paddingVertical: 12,
+    paddingHorizontal: 15,
+    borderRadius: 10,
+    marginBottom: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  communicationButtonText: {
+    fontSize: 16,
+    color: '#007AFF',
     fontWeight: '600',
+    marginLeft: 10,
   },
 });
+
+export default CoachDashboard;

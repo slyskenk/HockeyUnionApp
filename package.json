@@ -43,7 +43,8 @@
     "react-native-web": "~0.20.0",
     "react-native-webview": "13.13.5",
     "react-native-youtube-iframe": "^2.3.0",
-    "tslib": "^2.8.1"
+    "tslib": "^2.8.1",
+    "@react-native-picker/picker": "2.11.0"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",
