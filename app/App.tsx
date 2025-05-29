@@ -1,4 +1,5 @@
 import React from 'react';
+import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
 import Dashboard from '../app/screens/admin/ChatbotManager';
@@ -17,18 +18,26 @@ const Stack = createNativeStackNavigator();
 
 export default function RootNavigator() {
   return (
-    <Stack.Navigator initialRouteName="Dashboard">
-      <Stack.Screen name="Dashboard" component={Dashboard} />
-      <Stack.Screen name="Events" component={Events} />
-      <Stack.Screen name="FanChatBot" component={Fanchat} />
-      <Stack.Screen name="Forum" component={Forum} />
-      <Stack.Screen name="Highlights" component={Highlights} />
-      <Stack.Screen name="MerchStore" component={MerchStore} />
-      <Stack.Screen name="News" component={News} />
-      <Stack.Screen name="PollsVoting" component={PollsVoting} />
-      <Stack.Screen name="Teams" component={Teams} />
-      <Stack.Screen name="BookmarksScreen" component={BookmarksScreen} />
-      <Stack.Screen name="ArticlePage" component={ArticlePage} />
-    </Stack.Navigator>
+    <NavigationContainer>
+
+
+{/* Supporter Navigation Starts  */}
+      <Stack.Navigator initialRouteName="Dashboard">
+        <Stack.Screen name="Dashboard" component={Dashboard} />
+        <Stack.Screen name="Events" component={Events} />
+         <Stack.Screen name="FanChatBot" component={Fanchat} />
+         <Stack.Screen name="Forum" component={Forum} />
+          <Stack.Screen name="Highlights" component={Highlights} />
+        <Stack.Screen name="MerchStore" component={MerchStore} />
+         <Stack.Screen name="News" component={News} />
+         <Stack.Screen name="PollsVoting" component={PollsVoting} />
+          <Stack.Screen name="Teams" component={Teams} />
+          <Stack.Screen name="BookmarksScreen" component={BookmarksScreen} />
+          <Stack.Screen name="ArticlePage" component={ArticlePage} />
+ {/* Supporter Navigation Ends */}
+
+        
+      </Stack.Navigator>
+    </NavigationContainer>
   );
 }
