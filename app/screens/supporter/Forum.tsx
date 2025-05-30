@@ -219,7 +219,7 @@ export default CommunityForumScreen;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#EFF6FF',
+    backgroundColor: '#F4F6F9',
   },
   messageList: {
     padding: 16,

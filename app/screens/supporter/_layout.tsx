@@ -2,13 +2,23 @@ import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Image, StyleSheet } from 'react-native';
 
+import Events from './Events';
+import Teams from './Teams';
+import BookmarksScreen from '../supporter/news/BookmarksScreen';
+import ArticlePage from '../supporter/news/article';
+import PollingStationApp from './PollsVoting';
+
+
 import Dashboard from './Dashboard';
 import Fanchat from './FanChatbot';
 import Forum from './Forum';
 import MerchStore from './MerchStore';
 import News from './News';
 
+
+
 const Tab = createBottomTabNavigator();
+const Stack = createNativeStackNavigator();
 
 const icons = {
   Dashboard: require('../../../assets/icons/home.png'),
@@ -18,7 +28,7 @@ const icons = {
   News: require('../../../assets/icons/megaphone.png')
 };
 
-export default function BottomTabs() {
+export default function SupporterTabs() {
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
@@ -60,3 +70,19 @@ const styles = StyleSheet.create({
     resizeMode: 'contain',
   },
 });
+
+export default function RootNavigator() {
+  return (
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      {/* Bottom tab navigator as the main screen */}
+      <Stack.Screen name="MainTabs" component={BottomTabs} />
+
+      {/* Screens outside the tabs */}
+      <Stack.Screen name="Events" component={Events} />
+      <Stack.Screen name="Teams" component={Teams} />
+      <Stack.Screen name="Bookmarks" component={BookmarksScreen} />
+      <Stack.Screen name="Article" component={ArticlePage} />
+      <Stack.Screen name="PollingStation" component={PollingStationApp} />
+    </Stack.Navigator>
+  );
+}

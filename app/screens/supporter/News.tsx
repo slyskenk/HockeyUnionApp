@@ -87,7 +87,7 @@ const NewsScreen = () => {
       <TouchableOpacity
         onPress={() =>
           router.push({
-            pathname: '/news/article',
+            pathname: '/screens/supporter/news/article',
             params: {
               title: item.title,
               content: item.content,
@@ -151,7 +151,7 @@ const NewsScreen = () => {
         style={styles.floatingBookmark}
         onPress={() =>
           router.push({
-            pathname: '/news/BookmarksScreen',
+            pathname: '/screens/supporter/news/BookmarksScreen',
             params: { ids: JSON.stringify(bookmarkedIds) },
           })
         }
@@ -167,7 +167,7 @@ export default NewsScreen;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: '#F4F6F9',
   },
   list: {
     paddingHorizontal: 16,

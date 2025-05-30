@@ -38,7 +38,7 @@ export default function App() {
 
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.title}>🏒 Hockey Merch Store</Text>
+        <Text style={styles.title}>Hockey Merch Store</Text>
         <Ionicons name="cart-outline" size={26} color="#007bff" />
       </View>
 
@@ -84,79 +84,87 @@ export default function App() {
         )}
       />
 
-      {/* Bottom Nav */}
-      <View style={styles.navbar}>
-        <Ionicons name="home" size={24} color="#007bff" />
-        <MaterialCommunityIcons name="cart" size={24} color="#007bff" />
-        <Ionicons name="person-outline" size={24} color="#007bff" />
-      </View>
+    
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff' },
+  container: {
+    flex: 1,
+    backgroundColor: '#F4F6F9', // Light blue-grey
+  },
   header: {
-    padding: 16,
+    padding: 50,
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center'
+    alignItems: 'center',
+     // Deep blue
   },
   title: {
-    fontSize: 22,
+    fontSize: 26,
     fontWeight: 'bold',
-    color: '#007bff'
+    color: '#2E5AAC',
   },
   search: {
-    backgroundColor: '#f0f0f0',
+    backgroundColor: '#ffffff',
     marginHorizontal: 16,
     borderRadius: 10,
     padding: 10,
-    marginBottom: 10
+    marginBottom: 10,
   },
   categories: {
     flexDirection: 'row',
     justifyContent: 'space-around',
     marginBottom: 10,
-    paddingHorizontal: 10
+    paddingHorizontal: 10,
   },
   categoryButton: {
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 20,
-    backgroundColor: '#e0e0e0'
+    backgroundColor: '#F0F4FF',
+    borderWidth: 1,
+    borderColor: '#C7D2E4',
   },
   categoryButtonActive: {
-    backgroundColor: '#007bff'
+    backgroundColor: '#2E5AAC',
+    borderColor: '#2E5AAC',
   },
   categoryText: {
-    color: '#333'
+    color: '#333333',
+    fontSize: 15,
+    fontWeight: 'normal',
   },
   categoryTextActive: {
-    color: '#fff',
-    fontWeight: 'bold'
+    color: '#ffffff',
+    fontWeight: 'bold',
   },
   productCard: {
     width: (width - 48) / 2,
-    backgroundColor: '#f9f9f9',
+    backgroundColor: '#ffffff',
     borderRadius: 12,
     padding: 10,
     alignItems: 'center',
-    elevation: 2
+    elevation: 2,
   },
   productImage: {
     width: 100,
     height: 100,
     marginBottom: 8,
-    resizeMode: 'contain'
+    resizeMode: 'contain',
   },
   productName: {
-    fontWeight: '600',
-    textAlign: 'center'
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#2E5AAC',
+    textAlign: 'center',
   },
   productPrice: {
-    color: '#007bff',
-    marginTop: 4
+    fontSize: 15,
+    fontWeight: 'normal',
+    color: '#333333',
+    marginTop: 4,
   },
   navbar: {
     position: 'absolute',
@@ -164,9 +172,9 @@ const styles = StyleSheet.create({
     width,
     flexDirection: 'row',
     justifyContent: 'space-around',
-    backgroundColor: '#fff',
+    backgroundColor: '#ffffff',
     paddingVertical: 12,
     borderTopWidth: 1,
-    borderTopColor: '#ccc'
-  }
+    borderTopColor: '#C7D2E4',
+  },
 });
