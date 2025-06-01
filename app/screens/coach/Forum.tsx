@@ -1,3 +1,4 @@
+// app/coach/Forum.tsx
 import { MaterialCommunityIcons, MaterialIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
@@ -147,7 +148,7 @@ const DUMMY_TOPICS: ForumTopic[] = [
   },
 ];
 
-const Forum = () => {
+const Forum = () => { // Component name remains 'Forum'
   const router = useRouter();
   const [topics, setTopics] = useState<ForumTopic[]>(DUMMY_TOPICS);
   const [createTopicModalVisible, setCreateTopicModalVisible] = useState(false);
@@ -167,9 +168,13 @@ const Forum = () => {
 
   // Sort topics by last activity, newest first
   useEffect(() => {
+    // Only sort if topics has changed significantly (e.g., length change or actual item change)
     const sortedTopics = [...topics].sort((a, b) => b.lastActivity - a.lastActivity);
-    setTopics(sortedTopics);
-  }, [topics.length, topics.some(t => t.lastActivity)]);
+    // Deep comparison to prevent re-rendering if only the order of already sorted elements is unchanged
+    if (JSON.stringify(sortedTopics) !== JSON.stringify(topics)) {
+        setTopics(sortedTopics);
+    }
+  }, [topics]); // Depend on topics array, use stringify for deep check
 
   const handleCreateNewTopic = () => {
     if (!newTopicTitle.trim() || !newTopicContent.trim()) {
@@ -482,6 +487,7 @@ const Forum = () => {
                   onChangeText={setNewReplyContent}
                   multiline
                   maxHeight={80}
+                  minHeight={45}
                   onFocus={() => setReplyInputFocused(true)}
                   onBlur={() => setReplyInputFocused(false)}
                 />

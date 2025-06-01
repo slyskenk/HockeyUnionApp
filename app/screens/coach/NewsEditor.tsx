@@ -1,4 +1,7 @@
+// app/screens/coach/NewsEditor.tsx (Final version with fixes)
+
 import { MaterialIcons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker'; // Import ImagePicker
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
@@ -24,15 +27,16 @@ type NewsItem = {
   id: string;
   title: string;
   content: string;
-  imageUrl?: string;
+  imageUrl?: string | null; // Allow null here for imageUrl
   author: string;
   publishDate: number; // Unix timestamp
 };
 
-// --- Dummy Data ---
+// --- Dummy Data (Using let so we can modify it for demonstration) ---
+// Define COACH_NAME before DUMMY_NEWS_DATA
 const COACH_NAME = 'Coach John Doe';
 
-const DUMMY_NEWS: NewsItem[] = [
+let DUMMY_NEWS_DATA: NewsItem[] = [
   {
     id: 'n1',
     title: 'Training Location Change for Friday',
@@ -68,28 +72,34 @@ const formatDateForDisplay = (timestamp: number): string => {
   });
 };
 
+
 const CoachNewsEditor = () => {
   const router = useRouter();
-  const [newsItems, setNewsItems] = useState<NewsItem[]>(DUMMY_NEWS);
+  const [newsItems, setNewsItems] = useState<NewsItem[]>(DUMMY_NEWS_DATA); // Use the mutable dummy data
   const [modalVisible, setModalVisible] = useState(false);
   const [currentNewsItem, setCurrentNewsItem] = useState<NewsItem | null>(null); // For editing
 
   // Form states
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
-  const [imageUrl, setImageUrl] = useState(''); // Mock for image URL
+  const [imageUrl, setImageUrl] = useState<string | null>(null); // State for the image URL, explicitly allowing null
 
   // Sort news items by publish date, newest first
   useEffect(() => {
+    // Only sort if newsItems has changed significantly (e.g., length change or actual item change)
+    // To prevent infinite loop with setNewsItems
     const sortedNews = [...newsItems].sort((a, b) => b.publishDate - a.publishDate);
-    setNewsItems(sortedNews);
-  }, [newsItems.length]); // Re-sort when news item count changes
+    // Only update if the sorted array is different to avoid re-renders if order is already correct
+    if (JSON.stringify(sortedNews) !== JSON.stringify(newsItems)) {
+        setNewsItems(sortedNews);
+    }
+  }, [newsItems]); // Depend on newsItems directly, and use the check above
 
   const resetForm = () => {
     setCurrentNewsItem(null);
     setTitle('');
     setContent('');
-    setImageUrl('');
+    setImageUrl(null); // Reset image URL to null
   };
 
   const openAddModal = () => {
@@ -101,7 +111,7 @@ const CoachNewsEditor = () => {
     setCurrentNewsItem(item);
     setTitle(item.title);
     setContent(item.content);
-    setImageUrl(item.imageUrl || '');
+    setImageUrl(item.imageUrl || null); // Set existing image URL, or null
     setModalVisible(true);
   };
 
@@ -111,13 +121,23 @@ const CoachNewsEditor = () => {
       return;
     }
 
+    // Determine the final imageUrl to save.
+    // If imageUrl state is null, it means no image or removed image.
+    // If imageUrl state is an empty string (e.g., from an empty text input for a URL, though we removed that), treat as null.
+    // Otherwise, use the string value.
+    const finalImageUrl = imageUrl; // imageUrl state now directly reflects desired value (string or null)
+
+
     if (currentNewsItem) {
       // Update existing item
-      setNewsItems(newsItems.map(item =>
+      const updatedItem = newsItems.map(item =>
         item.id === currentNewsItem.id
-          ? { ...item, title: title.trim(), content: content.trim(), imageUrl: imageUrl.trim(), publishDate: Date.now() }
+          ? { ...item, title: title.trim(), content: content.trim(), imageUrl: finalImageUrl, publishDate: Date.now() }
           : item
-      ));
+      );
+      setNewsItems(updatedItem);
+      // Update the global dummy data as well for persistence across renders (in this demo)
+      DUMMY_NEWS_DATA = updatedItem;
       Alert.alert('Success', 'Announcement updated successfully!');
     } else {
       // Add new item
@@ -125,11 +145,13 @@ const CoachNewsEditor = () => {
         id: `news-${Date.now()}`,
         title: title.trim(),
         content: content.trim(),
-        imageUrl: imageUrl.trim() || undefined,
+        imageUrl: finalImageUrl, // Use the finalImageUrl
         author: COACH_NAME,
         publishDate: Date.now(),
       };
       setNewsItems([...newsItems, newItem]);
+      // Update the global dummy data as well for persistence across renders (in this demo)
+      DUMMY_NEWS_DATA = [...newsItems, newItem];
       Alert.alert('Success', 'New announcement published!');
     }
     setModalVisible(false);
@@ -145,7 +167,10 @@ const CoachNewsEditor = () => {
         {
           text: 'Delete',
           onPress: () => {
-            setNewsItems(newsItems.filter(item => item.id !== id));
+            const filteredNews = newsItems.filter(item => item.id !== id);
+            setNewsItems(filteredNews);
+            // Update the global dummy data as well
+            DUMMY_NEWS_DATA = filteredNews;
             Alert.alert('Deleted', 'Announcement has been deleted.');
           },
           style: 'destructive',
@@ -153,6 +178,31 @@ const CoachNewsEditor = () => {
       ]
     );
   };
+
+  // --- Image Picker Function ---
+  const pickImage = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permission required', 'Please grant media library permissions to pick an image.');
+      return;
+    }
+
+    let result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [4, 3], // Common aspect ratio for images
+      quality: 1, // High quality
+    });
+
+    if (!result.canceled) {
+      setImageUrl(result.assets[0].uri); // Set the selected image URI to state
+    }
+  };
+
+  const removeImage = () => {
+    setImageUrl(null); // Clear the image URL by setting it to null
+  };
+
 
   return (
     <View style={styles.container}>
@@ -186,7 +236,7 @@ const CoachNewsEditor = () => {
         <ScrollView contentContainerStyle={styles.scrollViewContent}>
           {newsItems.map((item) => (
             <View key={item.id} style={styles.newsCard}>
-              {item.imageUrl && (
+              {item.imageUrl && ( // Conditionally render image if imageUrl exists
                 <Image source={{ uri: item.imageUrl }} style={styles.newsImage} />
               )}
               <View style={styles.newsContent}>
@@ -258,19 +308,28 @@ const CoachNewsEditor = () => {
               value={content}
               onChangeText={setContent}
             />
-            <TextInput
-              style={styles.input}
-              placeholder="Image URL (Optional)"
-              placeholderTextColor="#999"
-              value={imageUrl}
-              onChangeText={setImageUrl}
-              keyboardType="url"
-            />
-            {/* You would integrate an actual image picker here */}
-            <TouchableOpacity style={styles.imagePickerButton}>
+            {/* Removed the TextInput for imageUrl because we're using ImagePicker now */}
+            {/* If you still want to allow manual URL input, you can re-add it, but manage its interaction with ImagePicker carefully */}
+
+
+            {/* --- Image Picker Integration --- */}
+            <TouchableOpacity style={styles.imagePickerButton} onPress={pickImage}>
                 <MaterialIcons name="image" size={24} color="#666" />
-                <Text style={styles.imagePickerButtonText}>Select Image</Text>
+                <Text style={styles.imagePickerButtonText}>
+                    {imageUrl ? 'Change Image' : 'Select Image'}
+                </Text>
             </TouchableOpacity>
+
+            {imageUrl && (
+                <View style={styles.imagePreviewContainer}>
+                    <Image source={{ uri: imageUrl }} style={styles.imagePreview} />
+                    <TouchableOpacity style={styles.removeImageButton} onPress={removeImage}>
+                        <MaterialIcons name="close" size={20} color="#FFF" />
+                    </TouchableOpacity>
+                </View>
+            )}
+            {/* --- End Image Picker Integration --- */}
+
 
             <View style={styles.modalButtons}>
               <TouchableOpacity style={styles.cancelButton} onPress={() => setModalVisible(false)}>
@@ -326,7 +385,7 @@ const styles = StyleSheet.create({
     color: '#fff',
     flex: 1,
     textAlign: 'center',
-    marginLeft: -40,
+    marginLeft: -40, // Adjust to center title more
   },
   scrollViewContent: {
     padding: 15,
@@ -499,6 +558,30 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#666',
     marginLeft: 10,
+  },
+  imagePreviewContainer: {
+    marginBottom: 15,
+    alignItems: 'center',
+    position: 'relative', // For absolute positioning of remove button
+  },
+  imagePreview: {
+    width: '100%',
+    height: 180,
+    borderRadius: 10,
+    resizeMode: 'cover',
+    borderWidth: 1,
+    borderColor: '#eee',
+  },
+  removeImageButton: {
+    position: 'absolute',
+    top: 5,
+    right: 5,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    borderRadius: 15,
+    width: 30,
+    height: 30,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   modalButtons: {
     flexDirection: 'row',

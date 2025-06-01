@@ -9,3 +9,4 @@ npm install --save-dev @types/react-native
 npm install tslib
 expo install @react-native-picker/picker
 npm install @react-native-community/datetimepicker @react-native-picker/picker
+npm install expo-image-picker

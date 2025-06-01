@@ -1,11 +1,10 @@
-// app/screens/coach/Dashboard.tsx (Updated)
+// app/screens/coach/Dashboard.tsx (Updated - Direct Messages removed)
 
 import { MaterialIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router'; // For navigation
 import React from 'react';
 import {
-  Alert,
   Dimensions,
   Image,
   ScrollView,
@@ -59,7 +58,7 @@ const DUMMY_ANNOUNCEMENTS = [
 const CoachDashboard = () => {
   const router = useRouter();
 
-  // Navigation functions updated to use router.push()
+  // Navigation functions
   const handleViewDetailedStats = () => {
     console.log('Navigating to Player Analytics/Team Stats');
     router.push('./../coach/PlayerAnalytics'); // Assuming PlayerAnalytics covers detailed team stats
@@ -87,14 +86,12 @@ const CoachDashboard = () => {
 
   const handleGoToTeamChat = () => {
     console.log('Navigating to Tactical Chatbot or dedicated chat');
-    // Assuming TacticalChatbot could also serve as a general team chat
     router.push('./../coach/TacticalChatbot');
   };
 
-  const handleGoToDirectMessages = () => {
-    console.log('Navigating to Direct Messages');
-    // No direct "Messages" page, could be part of Forum or a new page
-    Alert.alert('Navigation', 'Direct Messages feature not yet implemented or routed.');
+  const handleGoToForum = () => {
+    console.log('Navigating to Forum');
+    router.push('./../coach/Forum');
   };
 
   return (
@@ -237,11 +234,11 @@ const CoachDashboard = () => {
           </View>
           <TouchableOpacity style={styles.communicationButton} onPress={handleGoToTeamChat}>
             <MaterialIcons name="message" size={20} color="#007AFF" />
-            <Text style={styles.communicationButtonText}>Team Chat</Text>
+            <Text style={styles.communicationButtonText}>AI Tactical Assistant</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.communicationButton} onPress={handleGoToDirectMessages}>
-            <MaterialIcons name="mail-outline" size={20} color="#007AFF" />
-            <Text style={styles.communicationButtonText}>Direct Messages</Text>
+          <TouchableOpacity style={styles.communicationButton} onPress={handleGoToForum}>
+            <MaterialIcons name="forum" size={20} color="#007AFF" />
+            <Text style={styles.communicationButtonText}>Team Forum</Text>
           </TouchableOpacity>
         </View>
 
