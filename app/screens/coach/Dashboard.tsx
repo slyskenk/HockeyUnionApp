@@ -1,8 +1,11 @@
+// app/screens/coach/Dashboard.tsx (Updated)
+
 import { MaterialIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router'; // For navigation
 import React from 'react';
 import {
+  Alert,
   Dimensions,
   Image,
   ScrollView,
@@ -56,29 +59,42 @@ const DUMMY_ANNOUNCEMENTS = [
 const CoachDashboard = () => {
   const router = useRouter();
 
-  // Placeholder for navigation functions
+  // Navigation functions updated to use router.push()
+  const handleViewDetailedStats = () => {
+    console.log('Navigating to Player Analytics/Team Stats');
+    router.push('./../coach/PlayerAnalytics'); // Assuming PlayerAnalytics covers detailed team stats
+  };
+
   const handleViewFullSchedule = () => {
-    console.log('Navigating to Full Schedule');
-    Alert.alert('Navigation', 'View Full Schedule not implemented.');
-    // router.push('/coach/fixtures');
+    console.log('Navigating to Events Editor (Fixtures)');
+    router.push('./../coach/EventsEditor'); // Assuming EventsEditor handles fixtures/schedule
   };
 
   const handleManagePlayers = () => {
-    console.log('Navigating to Manage Players');
-    Alert.alert('Navigation', 'Manage Players not implemented.');
-    // router.push('/coach/my-team-players');
+    console.log('Navigating to Roster Manager');
+    router.push('./../coach/RosterManager');
   };
 
   const handleViewTrainingPlan = () => {
-    console.log('Navigating to Training Plan');
-    Alert.alert('Navigation', 'View Training Plan not implemented.');
-    // router.push('/coach/training-plan');
+    console.log('Navigating to Training Planner');
+    router.push('./../coach/TrainingPlanner');
+  };
+
+  const handleViewAllAnnouncements = () => {
+    console.log('Navigating to News Editor (Announcements)');
+    router.push('./../coach/NewsEditor'); // Assuming NewsEditor manages announcements
   };
 
   const handleGoToTeamChat = () => {
-    console.log('Navigating to Team Chat');
-    Alert.alert('Navigation', 'Go to Team Chat not implemented.');
-    // router.push('/coach/team-chat');
+    console.log('Navigating to Tactical Chatbot or dedicated chat');
+    // Assuming TacticalChatbot could also serve as a general team chat
+    router.push('./../coach/TacticalChatbot');
+  };
+
+  const handleGoToDirectMessages = () => {
+    console.log('Navigating to Direct Messages');
+    // No direct "Messages" page, could be part of Forum or a new page
+    Alert.alert('Navigation', 'Direct Messages feature not yet implemented or routed.');
   };
 
   return (
@@ -124,7 +140,7 @@ const CoachDashboard = () => {
               <Text style={styles.statLabel}>Players</Text>
             </View>
           </View>
-          <TouchableOpacity style={styles.fullStatsButton}>
+          <TouchableOpacity style={styles.fullStatsButton} onPress={handleViewDetailedStats}>
             <Text style={styles.fullStatsButtonText}>View Detailed Stats</Text>
             <MaterialIcons name="arrow-forward-ios" size={14} color="#007AFF" />
           </TouchableOpacity>
@@ -207,7 +223,7 @@ const CoachDashboard = () => {
               <Text style={styles.announcementText}>{announcement.text}</Text>
             </View>
           ))}
-          <TouchableOpacity style={styles.viewAllButton}>
+          <TouchableOpacity style={styles.viewAllButton} onPress={handleViewAllAnnouncements}>
             <Text style={styles.viewAllButtonText}>View All Announcements</Text>
             <MaterialIcons name="chevron-right" size={20} color="#007AFF" />
           </TouchableOpacity>
@@ -223,7 +239,7 @@ const CoachDashboard = () => {
             <MaterialIcons name="message" size={20} color="#007AFF" />
             <Text style={styles.communicationButtonText}>Team Chat</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.communicationButton}>
+          <TouchableOpacity style={styles.communicationButton} onPress={handleGoToDirectMessages}>
             <MaterialIcons name="mail-outline" size={20} color="#007AFF" />
             <Text style={styles.communicationButtonText}>Direct Messages</Text>
           </TouchableOpacity>

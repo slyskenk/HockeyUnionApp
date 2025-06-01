@@ -1,5 +1,6 @@
 import { MaterialIcons } from '@expo/vector-icons'; // For various report icons
-import React, { useState } from 'react';
+import { useRouter } from 'expo-router'; // Import useRouter for navigation
+import React, { useCallback, useMemo, useState } from 'react'; // Added useCallback, useMemo
 import {
   Alert,
   FlatList,
@@ -102,20 +103,23 @@ const DUMMY_REPORTS: ReportItem[] = [
 type ReportFilter = 'All' | 'Player' | 'Coach' | 'Admin' | 'Supporter' | 'Financial' | 'Events';
 
 const ReportsScreen = () => {
+  const router = useRouter(); // Initialize useRouter
   const [reports, setReports] = useState<ReportItem[]>(DUMMY_REPORTS);
   const [refreshing, setRefreshing] = useState(false);
   const [selectedFilter, setSelectedFilter] = useState<ReportFilter>('All'); // Default filter
 
-  // Filter reports based on the selected category
-  const filteredReports = reports.filter(report => {
-    if (selectedFilter === 'All') {
-      return true; // Show all reports
-    }
-    return report.relatedRole === selectedFilter;
-  });
+  // Filter reports based on the selected category, memoized for performance
+  const filteredReports = useMemo(() => {
+    return reports.filter(report => {
+      if (selectedFilter === 'All') {
+        return true; // Show all reports
+      }
+      return report.relatedRole === selectedFilter;
+    });
+  }, [reports, selectedFilter]);
 
-  // Function to format timestamp for display
-  const formatTimeAgo = (timestamp: number): string => {
+  // Function to format timestamp for display, memoized
+  const formatTimeAgo = useCallback((timestamp: number): string => {
     const seconds = Math.floor((Date.now() - timestamp) / 1000);
     let interval = seconds / 31536000; // years
     if (interval > 1) return Math.floor(interval) + " years ago";
@@ -128,29 +132,30 @@ const ReportsScreen = () => {
     interval = seconds / 60; // minutes
     if (interval > 1) return Math.floor(interval) + " minutes ago";
     return Math.floor(seconds) + " seconds ago";
-  };
+  }, []);
 
   /**
    * Handles viewing details of a report.
    * @param report The report item to view.
    */
-  const handleViewReportDetails = (report: ReportItem) => {
+  const handleViewReportDetails = useCallback((report: ReportItem) => {
     Alert.alert(
       `Report: ${report.title}`,
       `${report.description}\n\nType: ${report.type}\nGenerated: ${formatTimeAgo(report.timestamp)}\nStatus: ${report.status || 'N/A'}`,
       [
         { text: 'OK' },
-        // Add more actions here, e.g., 'Download', 'Share'
+        // In a real app, you might add 'Download', 'Share' options here,
+        // or navigate to a dedicated report viewer screen.
+        // Example: { text: 'Download PDF', onPress: () => console.log('Download report') }
       ]
     );
     console.log('Viewing report details:', report.id);
-    // In a real app, navigate to a detailed report screen or open a PDF viewer
-  };
+  }, [formatTimeAgo]); // Added formatTimeAgo as dependency
 
   /**
    * Simulates refreshing reports (e.g., fetching new data from a server).
    */
-  const onRefresh = React.useCallback(() => {
+  const onRefresh = useCallback(() => {
     setRefreshing(true);
     // Simulate fetching new data
     setTimeout(() => {
@@ -168,17 +173,18 @@ const ReportsScreen = () => {
     }, 1500);
   }, []);
 
+  // Helper function to get the appropriate icon based on report type
   const getIconForReportType = (type: ReportItem['type']) => {
     switch (type) {
-      case 'Player Performance': return 'person-outline';
-      case 'Team Performance': return 'group';
-      case 'User Activity': return 'person-search';
-      case 'Financial Summary': return 'attach-money';
-      case 'Event Attendance': return 'event-note';
+      case 'Player Performance': return 'sports-hockey'; // More specific icon
+      case 'Team Performance': return 'people';
+      case 'User Activity': return 'bar-chart';
+      case 'Financial Summary': return 'currency-exchange'; // More specific icon
+      case 'Event Attendance': return 'event-available'; // More specific icon
       case 'Forum Moderation': return 'gavel';
-      case 'Supporter Engagement': return 'favorite-border';
-      case 'Disciplinary Action': return 'warning';
-      default: return 'description';
+      case 'Supporter Engagement': return 'favorite'; // Filled heart
+      case 'Disciplinary Action': return 'gavel'; // Reusing gavel or 'gavel' could also be 'warning'
+      default: return 'description'; // Default document icon
     }
   };
 
@@ -189,7 +195,7 @@ const ReportsScreen = () => {
       activeOpacity={0.8}
     >
       <View style={styles.reportIconContainer}>
-        <MaterialIcons name={getIconForReportType(item.type)} size={28} color="#007AFF" />
+        <MaterialIcons name={getIconForReportType(item.type)} size={30} color="#007AFF" />
       </View>
       <View style={styles.reportContent}>
         <Text style={styles.reportTitle}>{item.title}</Text>
@@ -212,6 +218,13 @@ const ReportsScreen = () => {
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
+        {/* Back button */}
+        <TouchableOpacity
+          onPress={() => router.push('./../admin/Dashboard')} // Navigate back to Admin Dashboard
+          style={styles.backButton}
+        >
+          <MaterialIcons name="arrow-back" size={24} color="#fff" />
+        </TouchableOpacity>
         <Image
           source={require('../../../assets/images/logo.jpeg')} // Update this path
           style={styles.headerLogo}
@@ -251,7 +264,7 @@ const ReportsScreen = () => {
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#007AFF" />
           }
         >
-          <MaterialIcons name="folder-off" size={60} color="#ccc" />
+          <MaterialIcons name="folder-off" size={80} color="#ccc" />
           <Text style={styles.emptyListText}>No reports found for this category.</Text>
           <Text style={styles.emptyListSubText}>Pull down to refresh or try another filter.</Text>
         </ScrollView>
@@ -288,6 +301,17 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 2,
     elevation: 3,
+    flexDirection: 'row', // Added for back button positioning
+    justifyContent: 'center', // Center content
+  },
+  backButton: {
+    position: 'absolute', // Position absolutely
+    left: 15,
+    top: 50, // Align with header padding
+    zIndex: 10, // Ensure it's above other elements
+    backgroundColor: '#007AFF', // Blue circle background
+    borderRadius: 20, // Make it a circle
+    padding: 8, // Padding inside the circle
   },
   headerLogo: {
     width: 60,
@@ -298,6 +322,7 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: 'bold',
     color: '#333',
+    marginLeft: 10, // Adjust for logo and back button
   },
   filterContainer: {
     backgroundColor: '#fff',

@@ -1,10 +1,12 @@
 import { MaterialIcons } from '@expo/vector-icons'; // For various icons
-import React, { useCallback, useState } from 'react';
+import { useRouter } from 'expo-router'; // Import useRouter
+import React, { useCallback, useEffect, useState } from 'react'; // Added useEffect
 import {
   Alert,
   FlatList,
   Image,
   KeyboardAvoidingView,
+  Modal,
   Platform,
   RefreshControl,
   ScrollView,
@@ -15,10 +17,15 @@ import {
   View,
 } from 'react-native';
 
+// Import for date/time pickers and dropdowns
+import DateTimePicker from '@react-native-community/datetimepicker';
+import { Picker } from '@react-native-picker/picker';
+
 // --- Type Definitions ---
 
 // Define possible statuses for an event
 type EventStatus = 'Draft' | 'Published' | 'Completed' | 'Cancelled';
+type EventAudience = 'All' | 'Players' | 'Coaches' | 'Supporters'; // Define Audience type
 
 // Define the structure for an Event item
 type EventItem = {
@@ -29,10 +36,10 @@ type EventItem = {
   endDate: number; // Unix timestamp
   location: string;
   organizer?: string;
-  audience?: 'All' | 'Players' | 'Coaches' | 'Supporters';
+  audience?: EventAudience; // Use the defined type
   registrationLink?: string;
   imageUrl?: string; // Optional event banner/image
-  status: EventStatus;
+  status: EventStatus; // Use the defined type
 };
 
 // --- Dummy Data ---
@@ -40,7 +47,7 @@ type EventItem = {
 const DUMMY_EVENTS: EventItem[] = [
   {
     id: 'e1',
-    title: 'Senior Men\'s League Matchday 5',
+    title: "Senior Men's League Matchday 5",
     description: 'Crucial matches for the top teams in the senior men\'s division. Come support your favorite team!',
     startDate: new Date('2025-06-15T14:00:00').getTime(),
     endDate: new Date('2025-06-15T18:00:00').getTime(),
@@ -95,9 +102,41 @@ const DUMMY_EVENTS: EventItem[] = [
 ];
 
 const EventsManager = () => {
+  const router = useRouter();
   const [events, setEvents] = useState<EventItem[]>(DUMMY_EVENTS);
   const [searchQuery, setSearchQuery] = useState('');
   const [refreshing, setRefreshing] = useState(false);
+
+  // --- State for the Modal Form ---
+  const [isModalVisible, setIsModalVisible] = useState(false);
+  const [eventToEdit, setEventToEdit] = useState<EventItem | null>(null); // Holds event data for editing or null for new event
+  const [formData, setFormData] = useState<Partial<EventItem>>({}); // State for form inputs
+  const [showStartDatePicker, setShowStartDatePicker] = useState(false);
+  const [showEndDatePicker, setShowEndDatePicker] = useState(false);
+
+  // Effect to initialize form data when modal opens or eventToEdit changes
+  useEffect(() => {
+    if (isModalVisible) {
+      if (eventToEdit) {
+        setFormData(eventToEdit); // Populate with existing event data
+      } else {
+        // Initialize for a new event
+        setFormData({
+          id: `new-${Date.now()}`, // Generate a temporary ID for new event
+          title: '',
+          description: '',
+          startDate: Date.now(),
+          endDate: Date.now() + 3600000, // +1 hour from now
+          location: '',
+          status: 'Draft',
+          audience: 'All',
+          organizer: '',
+          registrationLink: '',
+          imageUrl: '',
+        });
+      }
+    }
+  }, [isModalVisible, eventToEdit]);
 
   // Filter events based on search query
   const filteredEvents = events.filter(event =>
@@ -161,24 +200,108 @@ const EventsManager = () => {
   };
 
   /**
-   * Placeholder for adding a new event.
-   * In a real app, this would navigate to a detailed form or open a modal.
+   * Opens the modal to add a new event.
    */
   const handleAddEvent = () => {
-    console.log('Add new event');
-    Alert.alert('Add Event', 'Functionality to add new event not implemented yet. (Would open a form/modal)');
-    // Example: router.push('/admin/add-event');
+    setEventToEdit(null); // No event to edit, so it's a new one
+    setIsModalVisible(true);
   };
 
   /**
-   * Placeholder for editing an existing event.
+   * Opens the modal to edit an existing event.
    * @param event The event object to edit.
-   * In a real app, this would navigate to a detailed form or open a modal, pre-filling data.
    */
   const handleEditEvent = (event: EventItem) => {
-    console.log('Edit event:', event.title);
-    Alert.alert('Edit Event', `Functionality to edit "${event.title}" not implemented yet. (Would open a form/modal)`);
-    // Example: router.push({ pathname: '/admin/edit-event', params: { eventId: event.id } });
+    setEventToEdit(event); // Set the event data to pre-fill the form
+    setIsModalVisible(true);
+  };
+
+  // --- Modal Form Handlers ---
+
+  /**
+   * Updates a specific field of the modal form data.
+   */
+  const handleChangeFormData = (field: keyof EventItem, value: string | number | EventStatus | EventAudience) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  /**
+   * Handles date/time picker changes for the form.
+   */
+  const onDateChange = (event: any, selectedDate: Date | undefined, field: 'startDate' | 'endDate') => {
+    const currentDate = selectedDate || (field === 'startDate' ? new Date(formData.startDate!) : new Date(formData.endDate!));
+    if (field === 'startDate') setShowStartDatePicker(Platform.OS === 'ios');
+    else setShowEndDatePicker(Platform.OS === 'ios');
+
+    if (currentDate) {
+      handleChangeFormData(field, currentDate.getTime());
+    }
+  };
+
+  /**
+   * Handles saving the event data from the modal form.
+   */
+  const handleSaveModal = () => {
+    // Basic validation
+    if (!formData.title || !formData.description || !formData.location || !formData.startDate || !formData.endDate) {
+      Alert.alert('Missing Information', 'Please fill in Title, Description, Location, Start Date, and End Date.');
+      return;
+    }
+
+    if (formData.startDate > formData.endDate) {
+      Alert.alert('Invalid Dates', 'End Date cannot be before Start Date.');
+      return;
+    }
+
+    // Ensure all required fields for EventItem type are present
+    const finalData: EventItem = {
+      id: formData.id || `e${Date.now()}`, // Ensure ID exists for new events
+      title: formData.title,
+      description: formData.description,
+      startDate: formData.startDate,
+      endDate: formData.endDate,
+      location: formData.location,
+      organizer: formData.organizer || '',
+      audience: formData.audience || 'All',
+      registrationLink: formData.registrationLink || '',
+      imageUrl: formData.imageUrl || '',
+      status: formData.status || 'Draft',
+    };
+
+    const isNew = !eventToEdit; // If eventToEdit was null, it's a new event
+
+    if (isNew) {
+      setEvents(prevEvents => [finalData, ...prevEvents]); // Add new event to the beginning
+    } else {
+      setEvents(prevEvents =>
+        prevEvents.map(event => (event.id === finalData.id ? finalData : event))
+      );
+    }
+    setIsModalVisible(false); // Close the modal
+    setEventToEdit(null); // Clear the event being edited
+    Alert.alert('Success', `Event ${isNew ? 'added' : 'updated'} successfully!`);
+    // In a real app, send data to your backend API here
+  };
+
+  /**
+   * Handles canceling the modal form.
+   */
+  const handleCancelModal = () => {
+    Alert.alert(
+      'Discard Changes',
+      'Are you sure you want to discard unsaved changes?',
+      [
+        { text: 'No', style: 'cancel' },
+        {
+          text: 'Yes',
+          onPress: () => {
+            setIsModalVisible(false); // Close the modal
+            setEventToEdit(null); // Clear any pending event to edit
+          },
+          style: 'destructive',
+        },
+      ]
+    );
   };
 
   /**
@@ -189,15 +312,15 @@ const EventsManager = () => {
     // Simulate fetching new data
     setTimeout(() => {
       const newEvent: EventItem = {
-        id: `new-${Date.now()}`,
-        title: 'New Friendly Match Announced!',
-        description: 'A friendly match between local clubs has been scheduled for next month.',
-        startDate: Date.now() + (1000 * 60 * 60 * 24 * 30), // 30 days from now
-        endDate: Date.now() + (1000 * 60 * 60 * 24 * 30) + (1000 * 60 * 60 * 3), // 3 hours duration
-        location: 'Local Club Field',
-        status: 'Published',
+        id: `fresh-${Date.now()}`,
+        title: 'Refreshed Event Added!',
+        description: 'This event appeared after pulling down to refresh.',
+        startDate: Date.now() + (1000 * 60 * 60 * 24 * 7), // 7 days from now
+        endDate: Date.now() + (1000 * 60 * 60 * 24 * 7) + (1000 * 60 * 60 * 2), // 2 hours duration
+        location: 'Refresh Arena',
+        status: 'Draft',
       };
-      setEvents(prev => [newEvent, ...prev]);
+      setEvents(prev => [newEvent, ...prev.slice(0, 4)]); // Add new, keep list shorter for demo
       setRefreshing(false);
     }, 1500);
   }, []);
@@ -209,7 +332,7 @@ const EventsManager = () => {
   const renderEventCard = ({ item }: { item: EventItem }) => (
     <TouchableOpacity
       style={styles.eventCard}
-      onPress={() => handleEditEvent(item)} // Tapping card previews/edits
+      onPress={() => handleEditEvent(item)} // Tapping card opens edit modal
       activeOpacity={0.8}
     >
       <Image
@@ -247,6 +370,10 @@ const EventsManager = () => {
     >
       {/* Header */}
       <View style={styles.header}>
+        {/* Back button */}
+        <TouchableOpacity onPress={() => router.push('./../admin/Dashboard')} style={styles.backButton}>
+          <MaterialIcons name="arrow-back" size={24} color="#fff" />
+        </TouchableOpacity>
         <Image
           source={require('../../../assets/images/logo.jpeg')} // Update this path
           style={styles.headerLogo}
@@ -293,6 +420,147 @@ const EventsManager = () => {
       <TouchableOpacity style={styles.floatingAddButton} onPress={handleAddEvent}>
         <MaterialIcons name="add" size={30} color="#fff" />
       </TouchableOpacity>
+
+      {/* --- Modal Form for Add/Edit Event (All within EventsManager.tsx) --- */}
+      <Modal
+        animationType="slide"
+        transparent={false}
+        visible={isModalVisible}
+        onRequestClose={handleCancelModal}
+      >
+        <KeyboardAvoidingView
+          style={styles.modalContainer}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 60 : 0}
+        >
+          <View style={styles.modalHeader}>
+            <TouchableOpacity onPress={handleCancelModal} style={styles.closeButton}>
+              <MaterialIcons name="close" size={24} color="#FF3B30" />
+            </TouchableOpacity>
+            <Text style={styles.modalTitle}>{eventToEdit ? 'Edit Event' : 'Add New Event'}</Text>
+            <TouchableOpacity onPress={handleSaveModal} style={styles.saveButton}>
+              <MaterialIcons name="check" size={24} color="#007AFF" />
+            </TouchableOpacity>
+          </View>
+
+          <ScrollView contentContainerStyle={styles.formContainer}>
+            <Text style={styles.label}>Title:</Text>
+            <TextInput
+              style={styles.input}
+              value={formData.title}
+              onChangeText={(text) => handleChangeFormData('title', text)}
+              placeholder="Event Title"
+            />
+
+            <Text style={styles.label}>Description:</Text>
+            <TextInput
+              style={[styles.input, styles.multilineInput]}
+              value={formData.description}
+              onChangeText={(text) => handleChangeFormData('description', text)}
+              placeholder="Detailed description of the event"
+              multiline
+              numberOfLines={4}
+            />
+
+            <Text style={styles.label}>Location:</Text>
+            <TextInput
+              style={styles.input}
+              value={formData.location}
+              onChangeText={(text) => handleChangeFormData('location', text)}
+              placeholder="e.g., National Hockey Stadium"
+            />
+
+            <Text style={styles.label}>Start Date & Time:</Text>
+            <TouchableOpacity onPress={() => setShowStartDatePicker(true)} style={styles.datePickerButton}>
+              <MaterialIcons name="calendar-today" size={20} color="#007AFF" />
+              <Text style={styles.datePickerButtonText}>{formatDate(formData.startDate!)}</Text>
+            </TouchableOpacity>
+            {showStartDatePicker && (
+              <DateTimePicker
+                testID="startDatePicker"
+                value={new Date(formData.startDate || Date.now())}
+                mode="datetime"
+                is24Hour={true}
+                display="default"
+                onChange={(e, d) => onDateChange(e, d, 'startDate')}
+              />
+            )}
+
+            <Text style={styles.label}>End Date & Time:</Text>
+            <TouchableOpacity onPress={() => setShowEndDatePicker(true)} style={styles.datePickerButton}>
+              <MaterialIcons name="calendar-today" size={20} color="#007AFF" />
+              <Text style={styles.datePickerButtonText}>{formatDate(formData.endDate!)}</Text>
+            </TouchableOpacity>
+            {showEndDatePicker && (
+              <DateTimePicker
+                testID="endDatePicker"
+                value={new Date(formData.endDate || Date.now())}
+                mode="datetime"
+                is24Hour={true}
+                display="default"
+                onChange={(e, d) => onDateChange(e, d, 'endDate')}
+              />
+            )}
+
+            <Text style={styles.label}>Organizer (Optional):</Text>
+            <TextInput
+              style={styles.input}
+              value={formData.organizer}
+              onChangeText={(text) => handleChangeFormData('organizer', text)}
+              placeholder="e.g., NHU Coaching Staff"
+            />
+
+            <Text style={styles.label}>Audience:</Text>
+            <View style={styles.pickerContainer}>
+              <Picker
+                selectedValue={formData.audience}
+                onValueChange={(itemValue: EventAudience) => handleChangeFormData('audience', itemValue)}
+                style={styles.picker}
+              >
+                <Picker.Item label="All" value="All" />
+                <Picker.Item label="Players" value="Players" />
+                <Picker.Item label="Coaches" value="Coaches" />
+                <Picker.Item label="Supporters" value="Supporters" />
+              </Picker>
+            </View>
+
+            <Text style={styles.label}>Registration Link (Optional):</Text>
+            <TextInput
+              style={styles.input}
+              value={formData.registrationLink}
+              onChangeText={(text) => handleChangeFormData('registrationLink', text)}
+              placeholder="URL for registration"
+              keyboardType="url"
+              autoCapitalize="none"
+            />
+
+            <Text style={styles.label}>Image URL (Optional):</Text>
+            <TextInput
+              style={styles.input}
+              value={formData.imageUrl}
+              onChangeText={(text) => handleChangeFormData('imageUrl', text)}
+              placeholder="Link to event banner image"
+              keyboardType="url"
+              autoCapitalize="none"
+            />
+
+            <Text style={styles.label}>Status:</Text>
+            <View style={styles.pickerContainer}>
+              <Picker
+                selectedValue={formData.status}
+                onValueChange={(itemValue: EventStatus) => handleChangeFormData('status', itemValue)}
+                style={styles.picker}
+              >
+                <Picker.Item label="Draft" value="Draft" />
+                <Picker.Item label="Published" value="Published" />
+                <Picker.Item label="Completed" value="Completed" />
+                <Picker.Item label="Cancelled" value="Cancelled" />
+              </Picker>
+            </View>
+
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </Modal>
     </KeyboardAvoidingView>
   );
 };
@@ -314,6 +582,17 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 2,
     elevation: 3,
+    flexDirection: 'row', // Added for back button positioning
+    justifyContent: 'center', // Center content
+  },
+  backButton: {
+    position: 'absolute', // Position absolutely
+    left: 15,
+    top: 50, // Align with header padding
+    zIndex: 10, // Ensure it's above other elements
+    backgroundColor: '#007AFF',
+    borderRadius: 20,
+    padding: 8,
   },
   headerLogo: {
     width: 60,
@@ -324,6 +603,7 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: 'bold',
     color: '#333',
+    marginLeft: 10, // Adjust for logo and back button
   },
   searchBar: {
     backgroundColor: '#fff',
@@ -449,6 +729,91 @@ const styles = StyleSheet.create({
     color: '#999',
     textAlign: 'center',
     marginTop: 5,
+  },
+  // --- Modal Specific Styles (copied from previous modal component) ---
+  modalContainer: {
+    flex: 1,
+    backgroundColor: '#f0f2f5',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingTop: 50,
+    paddingHorizontal: 15,
+    paddingBottom: 15,
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 3,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  closeButton: {
+    padding: 5,
+  },
+  saveButton: {
+    padding: 5,
+  },
+  formContainer: {
+    padding: 20,
+    paddingBottom: 40,
+  },
+  label: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#555',
+    marginBottom: 5,
+    marginTop: 15,
+  },
+  input: {
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    paddingHorizontal: 15,
+    paddingVertical: 10,
+    fontSize: 16,
+    borderWidth: 1,
+    borderColor: '#ddd',
+    marginBottom: 5,
+  },
+  multilineInput: {
+    minHeight: 100,
+    textAlignVertical: 'top',
+  },
+  datePickerButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    paddingHorizontal: 15,
+    paddingVertical: 10,
+    borderWidth: 1,
+    borderColor: '#ddd',
+    marginBottom: 5,
+  },
+  datePickerButtonText: {
+    marginLeft: 10,
+    fontSize: 16,
+    color: '#333',
+  },
+  pickerContainer: {
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#ddd',
+    overflow: 'hidden',
+    marginBottom: 5,
+  },
+  picker: {
+    height: 50,
+    width: '100%',
   },
 });
 

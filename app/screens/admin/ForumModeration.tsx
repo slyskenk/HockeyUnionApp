@@ -1,7 +1,9 @@
 import { Entypo, Ionicons, MaterialIcons } from '@expo/vector-icons';
-import React, { useEffect, useRef, useState } from 'react';
+import { useRouter } from 'expo-router'; // Import useRouter for navigation
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert,
+  AlertButton,
   Dimensions,
   FlatList,
   Image,
@@ -12,7 +14,7 @@ import {
   TextInput,
   TouchableOpacity,
   View,
-  ViewStyle, // Import ViewStyle for type hinting
+  ViewStyle,
 } from 'react-native';
 
 const { width, height } = Dimensions.get('window');
@@ -56,6 +58,7 @@ const CURRENT_USER_AVATAR = DUMMY_USERS[CURRENT_USER_ID].avatar;
 const CURRENT_USER_ROLE = DUMMY_USERS[CURRENT_USER_ID].role; // Get current user's role
 
 const ForumModeration = () => {
+  const router = useRouter(); // Initialize useRouter
   const [messages, setMessages] = useState<ForumMessage[]>([
     {
       id: '1',
@@ -108,7 +111,7 @@ const ForumModeration = () => {
   ]);
   const [inputText, setInputText] = useState('');
   const [searchQuery, setSearchQuery] = useState(''); // New state for search
-  const flatListRef = useRef<FlatList>(null);
+  const flatListRef = useRef<FlatList<ForumMessage>>(null); // Explicitly type FlatList ref
 
   // Scroll to the bottom of the chat when messages update
   useEffect(() => {
@@ -117,23 +120,25 @@ const ForumModeration = () => {
     }
   }, [messages]);
 
-  // Filter messages based on search query
-  const filteredMessages = messages.filter(message =>
-    message.text.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    message.senderName.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // Memoized filtered messages based on search query
+  const filteredMessages = useMemo(() => {
+    return messages.filter(message =>
+      message.text.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      message.senderName.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  }, [messages, searchQuery]);
 
   // Function to format timestamp
-  const formatTimestamp = (date: Date) => {
+  const formatTimestamp = useCallback((date: Date) => {
     const hours = date.getHours();
     const minutes = date.getMinutes();
     const ampm = hours >= 12 ? 'PM' : 'AM';
     const formattedHours = hours % 12 === 0 ? 12 : hours % 12;
     const formattedMinutes = minutes < 10 ? '0' + minutes : minutes;
     return `${formattedHours}:${formattedMinutes} ${ampm}`;
-  };
+  }, []);
 
-  const handleSend = () => {
+  const handleSend = useCallback(() => {
     if (inputText.trim()) {
       const newMessage: ForumMessage = {
         id: Date.now().toString(),
@@ -147,7 +152,7 @@ const ForumModeration = () => {
       setInputText('');
       // In a real app, you would send this message to a backend/database
     }
-  };
+  }, [inputText, formatTimestamp]);
 
   // --- Admin Moderation Actions ---
 
@@ -156,7 +161,7 @@ const ForumModeration = () => {
    * Only accessible by Admin/Other Admin.
    * @param messageId The ID of the message to delete.
    */
-  const handleDeleteMessage = (messageId: string) => {
+  const handleDeleteMessage = useCallback((messageId: string) => {
     Alert.alert(
       'Delete Message',
       'Are you sure you want to delete this message? This action cannot be undone.',
@@ -169,22 +174,22 @@ const ForumModeration = () => {
             console.log(`Message ${messageId} deleted.`);
             // In a real app, call API to delete message from backend
           },
-          style: 'destructive' as 'destructive', // Explicitly cast to literal type
+          style: 'destructive',
         },
       ]
     );
-  };
+  }, []);
 
   /**
    * Placeholder for editing a message.
    * Only accessible by Admin/Other Admin.
    * @param message The message object to edit.
    */
-  const handleEditMessage = (message: ForumMessage) => {
+  const handleEditMessage = useCallback((message: ForumMessage) => {
     console.log('Edit message:', message.id);
     Alert.alert('Edit Message', `Functionality to edit message "${message.text.substring(0, 20)}..." not implemented.`);
     // In a real app, this would open a text input or modal to allow editing.
-  };
+  }, []);
 
   /**
    * Placeholder for reporting a user.
@@ -192,11 +197,11 @@ const ForumModeration = () => {
    * @param userId The ID of the user to report.
    * @param userName The name of the user to report.
    */
-  const handleReportUser = (userId: string, userName: string) => {
+  const handleReportUser = useCallback((userId: string, userName: string) => {
     console.log('Report user:', userName);
     Alert.alert('Report User', `Functionality to report user "${userName}" not implemented.`);
     // In a real app, this would open a form to specify report details.
-  };
+  }, []);
 
   /**
    * Placeholder for muting/banning a user.
@@ -204,18 +209,18 @@ const ForumModeration = () => {
    * @param userId The ID of the user to mute/ban.
    * @param userName The name of the user to mute/ban.
    */
-  const handleMuteBanUser = (userId: string, userName: string) => {
+  const handleMuteBanUser = useCallback((userId: string, userName: string) => {
     console.log('Mute/Ban user:', userName);
     Alert.alert('Mute/Ban User', `Functionality to mute/ban user "${userName}" not implemented.`);
     // In a real app, this would trigger backend moderation actions.
-  };
+  }, []);
 
   /**
    * Helper function to get the role badge style dynamically.
    * @param role The user's role.
    * @returns The corresponding StyleSheet style object.
    */
-  const getRoleBadgeStyle = (role: User['role']): ViewStyle => {
+  const getRoleBadgeStyle = useCallback((role: User['role']): ViewStyle => {
     switch (role) {
       case 'Admin': return styles.roleBadgeAdmin;
       case 'Other Admin': return styles.roleBadgeOtherAdmin;
@@ -226,35 +231,60 @@ const ForumModeration = () => {
       case 'Unknown': return {}; // No specific badge for unknown
       default: return {}; // Fallback
     }
-  };
+  }, []);
+
+  // Determine if the current logged-in user can moderate
+  const canModerate = useMemo(() => {
+    return CURRENT_USER_ROLE === 'Admin' || CURRENT_USER_ROLE === 'Other Admin';
+  }, [CURRENT_USER_ROLE]);
 
 
-  const renderMessage = ({ item }: { item: ForumMessage }) => {
+  const renderMessage = useCallback(({ item }: { item: ForumMessage }) => {
     const isCurrentUser = item.senderId === CURRENT_USER_ID;
     // Safely access senderInfo. If senderId is 'admin' (not in DUMMY_USERS), use item's name/avatar.
     const senderInfo = DUMMY_USERS[item.senderId] || { name: item.senderName, avatar: item.senderAvatar, role: 'Unknown' as User['role'] };
 
-    // Determine if the current logged-in user (Admin) can moderate this message
-    const canModerate = CURRENT_USER_ROLE === 'Admin' || CURRENT_USER_ROLE === 'Other Admin';
+    // Construct the moderation actions array
+    const moderationActions: AlertButton[] = [
+      { text: 'Edit Message', onPress: () => handleEditMessage(item) },
+      { text: 'Delete Message', onPress: () => handleDeleteMessage(item.id), style: 'destructive' },
+      { text: 'Report User', onPress: () => handleReportUser(item.senderId, item.senderName) },
+    ];
+
+    // Conditionally add the Mute/Ban User button for Admin
+    if (CURRENT_USER_ROLE === 'Admin') {
+      moderationActions.push({ text: 'Mute/Ban User', onPress: () => handleMuteBanUser(item.senderId, item.senderName), style: 'destructive' });
+    }
+
+    // Add the Cancel button last
+    moderationActions.push({ text: 'Cancel', style: 'cancel' });
+
 
     return (
       <View style={[
         styles.messageContainer,
         isCurrentUser ? styles.currentUserMessageContainer : styles.otherUserMessageContainer,
       ]}>
-        {!isCurrentUser && ( // Show avatar for other users
-          <Image source={{ uri: senderInfo.avatar }} style={styles.avatar} />
-        )}
+        {/* Avatar for all users (including current user for moderation context if desired) */}
+        <Image
+          source={{ uri: item.senderAvatar || 'https://placehold.co/40x40/CCCCCC/FFFFFF?text=?' }} // Fallback avatar
+          style={[
+            styles.avatar,
+            isCurrentUser ? styles.currentUserAvatar : styles.otherUserAvatar,
+          ]}
+        />
+
         <View style={styles.messageContent}>
-          <View style={styles.senderHeader}>
-            {!isCurrentUser && (
-              <Text style={styles.senderName}>{item.senderName}</Text>
-            )}
+          <View style={[
+            styles.senderHeader,
+            isCurrentUser ? styles.currentUserSenderHeader : styles.otherUserSenderHeader,
+          ]}>
+            <Text style={styles.senderName}>{item.senderName}</Text>
             {/* Display role badge if known and not 'Unknown' */}
             {senderInfo.role !== 'Unknown' && (
               <View style={[
                 styles.roleBadge,
-                getRoleBadgeStyle(senderInfo.role) // Use the helper function here
+                getRoleBadgeStyle(senderInfo.role),
               ]}>
                 <Text style={styles.roleBadgeText}>{senderInfo.role}</Text>
               </View>
@@ -279,18 +309,14 @@ const ForumModeration = () => {
         {/* Moderation Options Button (only for Admin/Other Admin) */}
         {canModerate && (
           <TouchableOpacity
-            style={styles.moderationOptionsButton}
+            style={[
+              styles.moderationOptionsButton,
+              isCurrentUser ? styles.currentUserModerationButton : styles.otherUserModerationButton,
+            ]}
             onPress={() => Alert.alert(
               'Moderation Actions',
               `Actions for message by ${item.senderName}`,
-              [
-                { text: 'Edit Message', onPress: () => handleEditMessage(item) },
-                { text: 'Delete Message', onPress: () => handleDeleteMessage(item.id), style: 'destructive' as 'destructive' }, // Explicitly cast
-                { text: 'Report User', onPress: () => handleReportUser(item.senderId, item.senderName) },
-                // Only main Admin can mute/ban
-                ...(CURRENT_USER_ROLE === 'Admin' ? [{ text: 'Mute/Ban User', onPress: () => handleMuteBanUser(item.senderId, item.senderName), style: 'destructive' as 'destructive' }] : []),
-                { text: 'Cancel', style: 'cancel' as 'cancel' }, // Explicitly cast
-              ]
+              moderationActions // Pass the pre-constructed array
             )}
           >
             <Entypo name="dots-three-vertical" size={18} color="#999" />
@@ -298,7 +324,7 @@ const ForumModeration = () => {
         )}
       </View>
     );
-  };
+  }, [canModerate, CURRENT_USER_ID, CURRENT_USER_ROLE, getRoleBadgeStyle, handleDeleteMessage, handleEditMessage, handleReportUser, handleMuteBanUser]);
 
   return (
     <KeyboardAvoidingView
@@ -306,15 +332,21 @@ const ForumModeration = () => {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 60 : 0} // Adjust as needed
     >
-      {/* Header with Logo and Title */}
+      {/* Header with Logo, Title, and Back Button */}
       <View style={styles.header}>
+        {/* Back button */}
+        <TouchableOpacity
+          onPress={() => router.push('./../admin/Dashboard')} // Navigate back to Admin Dashboard
+          style={styles.backButton}
+        >
+          <MaterialIcons name="arrow-back" size={24} color="#fff" />
+        </TouchableOpacity>
         <Image
           source={require('../../../assets/images/logo.jpeg')} // Update this path
           style={styles.headerLogo}
           resizeMode="contain"
         />
         <Text style={styles.headerTitle}>Forum Discussion</Text>
-        {/* Optional: Add a filter/search icon here if a separate search bar is not desired */}
       </View>
 
       {/* Search Bar for Messages */}
@@ -347,9 +379,12 @@ const ForumModeration = () => {
           renderItem={renderMessage}
           contentContainerStyle={styles.messageListContent}
           inverted={false} // Set to true if you want chat to start from bottom
+          // Optional performance props for larger lists:
+          // initialNumToRender={10}
+          // maxToRenderPerBatch={5}
+          // windowSize={21}
         />
       )}
-
 
       {/* Input Area */}
       <View style={styles.inputContainer}>
@@ -363,7 +398,6 @@ const ForumModeration = () => {
           value={inputText}
           onChangeText={setInputText}
           multiline
-          // maxHeight is now correctly defined within styles.textInput
         />
         <TouchableOpacity style={styles.inputIcon}>
           <MaterialIcons name="image" size={24} color="#888" />
@@ -393,6 +427,17 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 2,
     elevation: 3,
+    flexDirection: 'row', // Added for back button positioning
+    justifyContent: 'center', // Center content
+  },
+  backButton: {
+    position: 'absolute', // Position absolutely
+    left: 15,
+    top: 50, // Align with header padding
+    zIndex: 10, // Ensure it's above other elements
+    backgroundColor: '#007AFF', // Blue circle background
+    borderRadius: 20, // Make it a circle
+    padding: 8, // Padding inside the circle
   },
   headerLogo: {
     width: 60, // Smaller logo for the header
@@ -403,6 +448,7 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
     color: '#333',
+    // Removed marginLeft to allow auto-centering with `justifyContent: 'center'`
   },
   searchBar: {
     backgroundColor: '#fff',
@@ -428,7 +474,7 @@ const styles = StyleSheet.create({
   },
   currentUserMessageContainer: {
     alignSelf: 'flex-end', // Align current user messages to the right
-    flexDirection: 'row-reverse', // Reverse order for current user to put options button on left
+    flexDirection: 'row-reverse', // Reverse order for current user to put avatar on left
     alignItems: 'flex-start',
   },
   otherUserMessageContainer: {
@@ -438,8 +484,13 @@ const styles = StyleSheet.create({
     width: 30,
     height: 30,
     borderRadius: 15,
-    marginRight: 8,
     backgroundColor: '#ddd', // Placeholder background for avatar
+  },
+  currentUserAvatar: {
+    marginLeft: 8, // Space between avatar and bubble for current user
+  },
+  otherUserAvatar: {
+    marginRight: 8, // Space between avatar and bubble for other users
   },
   messageContent: {
     flexDirection: 'column',
@@ -449,6 +500,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 2,
+  },
+  currentUserSenderHeader: {
+    justifyContent: 'flex-end', // Align sender name/role to the right for current user
+    marginRight: 5, // Small indent for readability
+  },
+  otherUserSenderHeader: {
+    justifyContent: 'flex-start', // Align sender name/role to the left for other users
     marginLeft: 5, // Small indent for readability
   },
   senderName: {
@@ -516,9 +574,13 @@ const styles = StyleSheet.create({
   },
   moderationOptionsButton: {
     padding: 5,
-    marginLeft: 5,
-    marginRight: 5,
     alignSelf: 'flex-start', // Align with the top of the message
+  },
+  currentUserModerationButton: {
+    marginLeft: 5, // Space when current user message is on the right
+  },
+  otherUserModerationButton: {
+    marginRight: 5, // Space when other user message is on the left
   },
   inputContainer: {
     flexDirection: 'row',
@@ -543,7 +605,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#333',
     marginHorizontal: 8,
-    maxHeight: 100, // Corrected: maxHeight is a style property
+    maxHeight: 100,
   },
   inputIcon: {
     padding: 5,
