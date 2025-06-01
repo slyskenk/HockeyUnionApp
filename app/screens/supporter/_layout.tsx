@@ -16,6 +16,7 @@ import PollingStationApp from './PollsVoting';
 import Teams from './Teams';
 
 const Tab = createBottomTabNavigator();
+const Stack = createNativeStackNavigator();
 
 // Icon definitions for the tab bar
 const icons = {
@@ -45,22 +46,13 @@ function SupporterTabs() {
           const iconName = route.name as keyof typeof icons;
           const icon = icons[iconName];
           return (
-            <View style={styles.iconContainer}>
-              <Image
-                source={icon}
-                style={[
-                  styles.icon,
-                  { tintColor: focused ? '#007bff' : 'black' },
-                ]}
-              />
-              {route.name === 'FanChat' && unreadCount > 0 && (
-                <View style={styles.badge}>
-                  <Text style={styles.badgeText}>
-                    {unreadCount > 9 ? '9+' : unreadCount}
-                  </Text>
-                </View>
-              )}
-            </View>
+            <Image
+              source={icon}
+              style={[
+                styles.icon,
+                { tintColor: focused ? '#007bff' : 'black' }
+              ]}
+            />
           );
         },
         tabBarShowLabel: true,
