@@ -1,13 +1,12 @@
 import { Ionicons, MaterialIcons } from '@expo/vector-icons'; // For icons
-import React, { useState } from 'react';
+import { useRouter } from 'expo-router'; // Import useRouter for navigation
+import React, { useCallback, useMemo, useState } from 'react';
 import {
   Alert,
   FlatList,
   Image,
   RefreshControl,
-  ScrollView // Using ScrollView for empty state and for filter tabs
-  ,
-
+  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -24,6 +23,7 @@ type NotificationItem = {
   read: boolean;
   actionable: boolean; // Can the admin take an immediate action?
   relatedUserRole?: 'Admin' | 'Coach' | 'Player' | 'Supporter'; // New field for filtering
+  relatedItemId?: string; // Optional: ID of the related item (e.g., user ID, post ID)
 };
 
 // Dummy data for admin notifications with relatedUserRole
@@ -37,6 +37,7 @@ const DUMMY_NOTIFICATIONS: NotificationItem[] = [
     read: false,
     actionable: true,
     relatedUserRole: 'Player',
+    relatedItemId: 'user123', // Example: User ID
   },
   {
     id: 'notif2',
@@ -46,7 +47,8 @@ const DUMMY_NOTIFICATIONS: NotificationItem[] = [
     timestamp: Date.now() - (1000 * 60 * 60 * 2), // 2 hours ago
     read: false,
     actionable: true,
-    relatedUserRole: 'Supporter', // Example: a supporter posted
+    relatedUserRole: 'Supporter',
+    relatedItemId: 'post456', // Example: Post ID
   },
   {
     id: 'notif3',
@@ -56,7 +58,8 @@ const DUMMY_NOTIFICATIONS: NotificationItem[] = [
     timestamp: Date.now() - (1000 * 60 * 60 * 24), // 1 day ago
     read: false,
     actionable: true,
-    relatedUserRole: 'Admin', // Admin needs to moderate this
+    relatedUserRole: 'Admin',
+    relatedItemId: 'comment789', // Example: Comment ID
   },
   {
     id: 'notif4',
@@ -66,7 +69,8 @@ const DUMMY_NOTIFICATIONS: NotificationItem[] = [
     timestamp: Date.now() - (1000 * 60 * 60 * 48), // 2 days ago
     read: true,
     actionable: false,
-    relatedUserRole: 'Coach', // A coach made this update
+    relatedUserRole: 'Coach',
+    relatedItemId: 'event101', // Example: Event ID
   },
   {
     id: 'notif5',
@@ -77,6 +81,7 @@ const DUMMY_NOTIFICATIONS: NotificationItem[] = [
     read: true,
     actionable: true,
     relatedUserRole: 'Supporter',
+    relatedItemId: 'user124',
   },
   {
     id: 'notif6',
@@ -87,27 +92,31 @@ const DUMMY_NOTIFICATIONS: NotificationItem[] = [
     read: true,
     actionable: true,
     relatedUserRole: 'Coach',
+    relatedItemId: 'user125',
   },
 ];
 
 type RoleFilter = 'All' | 'Admin' | 'Coach' | 'Player' | 'Supporter';
 
 const NotificationScreen = () => {
+  const router = useRouter(); // Initialize useRouter
   const [notifications, setNotifications] = useState<NotificationItem[]>(DUMMY_NOTIFICATIONS);
   const [refreshing, setRefreshing] = useState(false);
   const [selectedRoleFilter, setSelectedRoleFilter] = useState<RoleFilter>('All'); // Default filter
 
-  // Filter notifications based on the selected role
-  const filteredNotifications = notifications.filter(notif => {
-    if (selectedRoleFilter === 'All') {
-      return true; // Show all notifications
-    }
-    // Only show notifications that have a matching relatedUserRole
-    return notif.relatedUserRole === selectedRoleFilter;
-  });
+  // Filter notifications based on the selected role, memoized for performance
+  const filteredNotifications = useMemo(() => {
+    return notifications.filter(notif => {
+      if (selectedRoleFilter === 'All') {
+        return true; // Show all notifications
+      }
+      // Only show notifications that have a matching relatedUserRole
+      return notif.relatedUserRole === selectedRoleFilter;
+    });
+  }, [notifications, selectedRoleFilter]);
 
-  // Function to format timestamp for display
-  const formatTimeAgo = (timestamp: number): string => {
+  // Function to format timestamp for display, memoized
+  const formatTimeAgo = useCallback((timestamp: number): string => {
     const seconds = Math.floor((Date.now() - timestamp) / 1000);
     let interval = seconds / 31536000; // years
     if (interval > 1) return Math.floor(interval) + " years ago";
@@ -120,54 +129,97 @@ const NotificationScreen = () => {
     interval = seconds / 60; // minutes
     if (interval > 1) return Math.floor(interval) + " minutes ago";
     return Math.floor(seconds) + " seconds ago";
-  };
+  }, []);
 
   /**
    * Marks a notification as read.
    * @param id The ID of the notification to mark as read.
    */
-  const markAsRead = (id: string) => {
+  const markAsRead = useCallback((id: string) => {
     setNotifications(prev =>
       prev.map(notif => (notif.id === id ? { ...notif, read: true } : notif))
     );
     // In a real app, send update to backend
-  };
-
-  /**
-   * Handles viewing details of a notification.
-   * @param notification The notification item to view.
-   */
-  const handleViewDetails = (notification: NotificationItem) => {
-    markAsRead(notification.id); // Mark as read when viewed
-    Alert.alert(
-      `Notification: ${notification.type}`,
-      `${notification.description}\n\nTime: ${formatTimeAgo(notification.timestamp)}`,
-      [
-        { text: 'Dismiss', onPress: () => handleDismiss(notification.id) },
-        { text: 'Go to Item', onPress: () => console.log(`Navigating to ${notification.type} for ${notification.id}`) },
-      ]
-    );
-    // In a real app, navigate to the specific screen (e.g., User Details, Forum Post)
-  };
+  }, []);
 
   /**
    * Handles dismissing (removing) a notification.
    * @param id The ID of the notification to dismiss.
    */
-  const handleDismiss = (id: string) => {
-    setNotifications(prev => prev.filter(notif => notif.id !== id));
-    console.log(`Notification ${id} dismissed.`);
-    // In a real app, send update to backend
-  };
+  const handleDismiss = useCallback((id: string) => {
+    Alert.alert(
+      "Dismiss Notification",
+      "Are you sure you want to dismiss this notification?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Dismiss",
+          onPress: () => {
+            setNotifications(prev => prev.filter(notif => notif.id !== id));
+            console.log(`Notification ${id} dismissed.`);
+            // In a real app, send update to backend
+          },
+          style: "destructive",
+        },
+      ]
+    );
+  }, []);
+
+  /**
+   * Handles viewing details of a notification and offers specific actions.
+   * @param notification The notification item to view.
+   */
+  const handleViewDetails = useCallback((notification: NotificationItem) => {
+    markAsRead(notification.id); // Mark as read when viewed
+
+    const actionButtons = [];
+
+    if (notification.actionable) {
+      if (notification.type === 'New User') {
+        actionButtons.push({
+          text: 'View Profile',
+          onPress: () => {
+            console.log(`Navigating to user profile for ${notification.relatedItemId}`);
+            // router.push(`/admin/users/${notification.relatedItemId}`); // Example navigation
+          },
+        });
+      } else if (notification.type === 'New Forum Post' || notification.type === 'Reported Content') {
+        actionButtons.push({
+          text: 'Go to Post',
+          onPress: () => {
+            console.log(`Navigating to forum post for ${notification.relatedItemId}`);
+            // router.push(`/forum/post/${notification.relatedItemId}`); // Example navigation
+          },
+        });
+      } else if (notification.type === 'Event Update') {
+        actionButtons.push({
+          text: 'View Event',
+          onPress: () => {
+            console.log(`Navigating to event details for ${notification.relatedItemId}`);
+            // router.push(`/admin/events/${notification.relatedItemId}`); // Example navigation
+          },
+        });
+      }
+    }
+
+    Alert.alert(
+      `Notification: ${notification.title}`,
+      `${notification.description}\n\nTime: ${formatTimeAgo(notification.timestamp)}`,
+      [
+        { text: 'Dismiss', onPress: () => handleDismiss(notification.id), style: 'destructive' },
+        ...actionButtons, // Add actionable buttons here
+        { text: 'OK', style: 'cancel' },
+      ]
+    );
+  }, [markAsRead, handleDismiss, formatTimeAgo]); // Added dependencies
 
   /**
    * Simulates refreshing notifications (e.g., fetching new data from a server).
    */
-  const onRefresh = React.useCallback(() => {
+  const onRefresh = useCallback(() => {
     setRefreshing(true);
     // Simulate fetching new data
     setTimeout(() => {
-      // Example: Add a new dummy notification on refresh
       const newNotif: NotificationItem = {
         id: `new-${Date.now()}`,
         type: 'New Forum Post',
@@ -176,13 +228,12 @@ const NotificationScreen = () => {
         timestamp: Date.now(),
         read: false,
         actionable: true,
-        relatedUserRole: 'Admin', // Assign a role for the new notification
+        relatedUserRole: 'Admin',
       };
       setNotifications(prev => [newNotif, ...prev]);
       setRefreshing(false);
     }, 1500);
   }, []);
-
 
   const renderNotificationItem = ({ item }: { item: NotificationItem }) => (
     <TouchableOpacity
@@ -191,10 +242,10 @@ const NotificationScreen = () => {
       activeOpacity={0.8}
     >
       <View style={styles.iconContainer}>
-        {item.type === 'New User' && <MaterialIcons name="person-add" size={24} color="#007AFF" />}
-        {item.type === 'New Forum Post' && <MaterialIcons name="forum" size={24} color="#FF9500" />}
-        {item.type === 'Reported Content' && <MaterialIcons name="report" size={24} color="#FF3B30" />}
-        {item.type === 'Event Update' && <MaterialIcons name="event" size={24} color="#5856D6" />}
+        {item.type === 'New User' && <MaterialIcons name="person-add" size={26} color="#007AFF" />}
+        {item.type === 'New Forum Post' && <MaterialIcons name="forum" size={26} color="#FF9500" />}
+        {item.type === 'Reported Content' && <MaterialIcons name="report-problem" size={26} color="#FF3B30" />} {/* Changed icon */}
+        {item.type === 'Event Update' && <MaterialIcons name="event-note" size={26} color="#5856D6" />} {/* Changed icon */}
         {!item.read && <View style={styles.unreadDot} />}
       </View>
       <View style={styles.notificationContent}>
@@ -205,7 +256,7 @@ const NotificationScreen = () => {
         <Text style={styles.notificationTime}>{formatTimeAgo(item.timestamp)}</Text>
       </View>
       <TouchableOpacity onPress={() => handleDismiss(item.id)} style={styles.dismissButton}>
-        <Ionicons name="close-circle-outline" size={24} color="#999" />
+        <Ionicons name="close-circle" size={26} color="#bbb" /> {/* Filled icon */}
       </TouchableOpacity>
     </TouchableOpacity>
   );
@@ -214,6 +265,13 @@ const NotificationScreen = () => {
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
+        {/* Back button */}
+        <TouchableOpacity
+          onPress={() => router.push('./../admin/Dashboard')} // Navigate back to Admin Dashboard
+          style={styles.backButton}
+        >
+          <MaterialIcons name="arrow-back" size={24} color="#fff" />
+        </TouchableOpacity>
         <Image
           source={require('../../../assets/images/logo.jpeg')} // Update this path
           style={styles.headerLogo}
@@ -245,7 +303,6 @@ const NotificationScreen = () => {
         </ScrollView>
       </View>
 
-
       {/* Notification List or Empty State */}
       {filteredNotifications.length === 0 ? (
         <ScrollView
@@ -254,9 +311,9 @@ const NotificationScreen = () => {
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#007AFF" />
           }
         >
-          <MaterialIcons name="notifications-off" size={60} color="#ccc" />
+          <MaterialIcons name="notifications-off" size={80} color="#ccc" />
           <Text style={styles.emptyListText}>No notifications for this category.</Text>
-          <Text style={styles.emptyListSubText}>Pull down to refresh.</Text>
+          <Text style={styles.emptyListSubText}>Pull down to refresh or check another filter.</Text>
         </ScrollView>
       ) : (
         <FlatList
@@ -291,6 +348,17 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 2,
     elevation: 3,
+    flexDirection: 'row', // Added for back button positioning
+    justifyContent: 'center', // Center content
+  },
+  backButton: {
+    position: 'absolute', // Position absolutely
+    left: 15,
+    top: 50, // Align with header padding
+    zIndex: 10, // Ensure it's above other elements
+    backgroundColor: '#007AFF', // Blue circle background
+    borderRadius: 20, // Make it a circle
+    padding: 8, // Padding inside the circle
   },
   headerLogo: {
     width: 60,
@@ -301,6 +369,7 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: 'bold',
     color: '#333',
+    marginLeft: 10, // Adjust for logo and back button
   },
   filterContainer: {
     backgroundColor: '#fff',

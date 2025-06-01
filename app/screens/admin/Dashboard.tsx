@@ -1,4 +1,5 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons'; // Using MaterialCommunityIcons for 'home-outline'
+import { useRouter } from 'expo-router'; // Import useRouter for navigation
 import React from 'react';
 import { Dimensions, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
@@ -23,25 +24,28 @@ const DashboardTab = ({ iconName, label, onPress }) => (
 );
 
 const DashboardScreen = () => {
-  // Dummy data for the tabs. You can customize iconName, label, and onPress function.
+  const router = useRouter(); // Initialize router for navigation
+
+  // Updated tabsData with new pages, icons, and navigation links
   const tabsData = [
-    { iconName: 'home-outline', label: 'Home', onPress: () => console.log('Home Pressed') },
-    { iconName: 'newspaper-variant-outline', label: 'News', onPress: () => console.log('News Pressed') },
-    { iconName: 'calendar-month-outline', label: 'Events', onPress: () => console.log('Events Pressed') },
-    { iconName: 'account-group-outline', label: 'Teams', onPress: () => console.log('Teams Pressed') },
-    { iconName: 'trophy-outline', label: 'Fixtures', onPress: () => console.log('Fixtures Pressed') },
-    { iconName: 'information-outline', label: 'About Us', onPress: () => console.log('About Us Pressed') },
-    { iconName: 'image-multiple-outline', label: 'Gallery', onPress: () => console.log('Gallery Pressed') },
-    { iconName: 'email-outline', label: 'Contact', onPress: () => console.log('Contact Pressed') },
-    { iconName: 'cog-outline', label: 'Settings', onPress: () => console.log('Settings Pressed') },
+    // Removed the Dashboard tab as requested
+    { iconName: 'robot-outline', label: 'Chatbot', onPress: () => router.push('./../admin/ChatbotManager') },
+    { iconName: 'calendar-edit', label: 'Events', onPress: () => router.push('./../admin/EventsManager') },
+    { iconName: 'forum-outline', label: 'Forum', onPress: () => router.push('./../admin/ForumModeration') },
+    { iconName: 'account-multiple-outline', label: 'Manage Users', onPress: () => router.push('./../admin/ManageUsers') },
+    { iconName: 'newspaper-variant-outline', label: 'News', onPress: () => router.push('./../admin/NewsManager') },
+    { iconName: 'bell-outline', label: 'Notifications', onPress: () => router.push('./../admin/Notification') },
+    { iconName: 'chart-bar', label: 'Reports', onPress: () => router.push('./../admin/Reports') },
+    { iconName: 'key-chain', label: 'Role Access', onPress: () => router.push('./../admin/RoleAccess') },
+    { iconName: 'account-group-outline', label: 'Teams', onPress: () => router.push('./../admin/TeamsManager') },
+    { iconName: 'trophy-outline', label: 'Leaderboards', onPress: () => router.push('./../admin/Leaderboards') }, // New page
   ];
 
   return (
     <View style={styles.rootContainer}> {/* This is now the main full-screen container */}
       {/* Namibia Hockey Union Logo */}
-      {/* Replace with your actual logo path or URI */}
       <Image
-        source={require('../../../assets/images/logo.jpeg')} // Update this path to your logo
+        source={require('./../../../assets/images/logo.jpeg')} // Updated path to your logo
         style={styles.logo}
         resizeMode="contain"
       />
@@ -104,12 +108,19 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: itemGap, // Use itemGap for vertical spacing as well
+    // Add subtle shadow for depth
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 3,
   },
   tabLabel: {
     fontSize: 14,
     color: '#555',
     marginTop: 5,
     fontWeight: '500',
+    textAlign: 'center', // Ensure label is centered
   },
 });
 

@@ -1,16 +1,18 @@
 import { MaterialIcons } from '@expo/vector-icons'; // For various icons
-import React, { useState } from 'react';
+import { useRouter } from 'expo-router'; // Import useRouter for navigation
+import React, { useCallback, useMemo, useState } from 'react';
 import {
   Alert,
   FlatList,
   Image,
   KeyboardAvoidingView,
-  Platform,
+  Platform, // Import AlertButton type for explicit typing
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
-  View,
+  View
 } from 'react-native';
 
 // --- Type Definitions ---
@@ -45,6 +47,7 @@ const DUMMY_TEAMS: Team[] = [
     players: [
       { id: 'p1', name: 'Player One', jerseyNumber: 7, position: 'Forward', email: 'p1@example.com', avatar: 'https://placehold.co/40x40/FF5733/FFFFFF?text=P1' },
       { id: 'p2', name: 'Player Two', jerseyNumber: 10, position: 'Midfielder', email: 'p2@example.com', avatar: 'https://placehold.co/40x40/33FF57/000000?text=P2' },
+      { id: 'p6', name: 'Player Six', jerseyNumber: 1, position: 'Goalkeeper', email: 'p6@example.com', avatar: 'https://placehold.co/40x40/FF5733/FFFFFF?text=P6' },
     ],
   },
   {
@@ -71,16 +74,27 @@ const DUMMY_TEAMS: Team[] = [
 ];
 
 const TeamsManager = () => {
+  const router = useRouter(); // Initialize useRouter
   const [teams, setTeams] = useState<Team[]>(DUMMY_TEAMS);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTeamForPlayers, setSelectedTeamForPlayers] = useState<Team | null>(null); // State to manage which team's players are being viewed/managed
 
-  // Filter teams based on search query
-  const filteredTeams = teams.filter(team =>
-    team.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (team.coachName && team.coachName.toLowerCase().includes(searchQuery.toLowerCase())) ||
-    (team.division && team.division.toLowerCase().includes(searchQuery.toLowerCase()))
-  );
+  // State for Add/Edit Team forms
+  const [showAddTeamForm, setShowAddTeamForm] = useState(false);
+  const [editingTeam, setEditingTeam] = useState<Team | null>(null); // Stores team data for editing
+
+  // State for Add/Edit Player forms
+  const [showAddPlayerForm, setShowAddPlayerForm] = useState(false);
+  const [editingPlayer, setEditingPlayer] = useState<Player | null>(null); // Stores player data for editing
+
+  // Filter teams based on search query (memoized for performance)
+  const filteredTeams = useMemo(() => {
+    return teams.filter(team =>
+      team.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (team.coachName && team.coachName.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (team.division && team.division.toLowerCase().includes(searchQuery.toLowerCase()))
+    );
+  }, [teams, searchQuery]);
 
   // --- Team Management Functions ---
 
@@ -88,7 +102,7 @@ const TeamsManager = () => {
    * Handles deleting a team.
    * @param teamId The ID of the team to delete.
    */
-  const handleDeleteTeam = (teamId: string) => {
+  const handleDeleteTeam = useCallback((teamId: string) => {
     Alert.alert(
       'Delete Team',
       'Are you sure you want to delete this team and all its associated players? This action cannot be undone.',
@@ -105,68 +119,56 @@ const TeamsManager = () => {
         },
       ]
     );
-  };
+  }, []);
 
   /**
-   * Placeholder for adding a new team.
-   * In a real app, this would navigate to a form or open a modal.
+   * Opens the form to add a new team.
    */
-  const handleAddTeam = () => {
-    console.log('Add new team');
-    Alert.alert('Add Team', 'Functionality to add new team not implemented yet. (Would open a form/modal)');
-    // Example: router.push('/admin/add-team');
-  };
+  const handleAddTeam = useCallback(() => {
+    setShowAddTeamForm(true);
+  }, []);
 
   /**
-   * Placeholder for editing an existing team.
+   * Opens the form to edit an existing team.
    * @param team The team object to edit.
-   * In a real app, this would navigate to a form or open a modal, pre-filling data.
    */
-  const handleEditTeam = (team: Team) => {
-    console.log('Edit team:', team.name);
-    Alert.alert('Edit Team', `Functionality to edit "${team.name}" not implemented yet. (Would open a form/modal)`);
-    // Example: router.push({ pathname: '/admin/edit-team', params: { teamId: team.id } });
-  };
+  const handleEditTeam = useCallback((team: Team) => {
+    setEditingTeam(team);
+  }, []);
 
   /**
    * Sets the selected team and effectively "opens" the player management view for that team.
    * @param team The team whose players are to be managed.
    */
-  const handleManagePlayers = (team: Team) => {
+  const handleManagePlayers = useCallback((team: Team) => {
     setSelectedTeamForPlayers(team);
     console.log(`Managing players for team: ${team.name}`);
-    // In a real app, this might navigate to a new screen like '/admin/manage-players-for-team',
-    // passing the team ID. For this demo, we'll simulate a modal by changing state.
-  };
+  }, []);
 
   // --- Player Management Functions (within selected team context) ---
 
   /**
-   * Placeholder for adding a new player to the currently selected team.
+   * Opens the form to add a new player to the currently selected team.
    */
-  const handleAddPlayerToTeam = () => {
+  const handleAddPlayerToTeam = useCallback(() => {
     if (!selectedTeamForPlayers) return;
-    console.log(`Add new player to ${selectedTeamForPlayers.name}`);
-    Alert.alert('Add Player', `Functionality to add new player to ${selectedTeamForPlayers.name} not implemented yet. (Would open a form/modal)`);
-    // In a real app, this would open a form to add a player, then update the 'teams' state.
-  };
+    setShowAddPlayerForm(true);
+  }, [selectedTeamForPlayers]);
 
   /**
-   * Placeholder for editing a player in the currently selected team.
+   * Opens the form to edit a player in the currently selected team.
    * @param player The player object to edit.
    */
-  const handleEditPlayerInTeam = (player: Player) => {
+  const handleEditPlayerInTeam = useCallback((player: Player) => {
     if (!selectedTeamForPlayers) return;
-    console.log(`Edit player ${player.name} in ${selectedTeamForPlayers.name}`);
-    Alert.alert('Edit Player', `Functionality to edit "${player.name}" not implemented yet. (Would open a form/modal)`);
-    // In a real app, this would open a form to edit player, then update the 'teams' state.
-  };
+    setEditingPlayer(player);
+  }, [selectedTeamForPlayers]);
 
   /**
    * Handles removing a player from the currently selected team.
    * @param playerId The ID of the player to remove.
    */
-  const handleRemovePlayerFromTeam = (playerId: string) => {
+  const handleRemovePlayerFromTeam = useCallback((playerId: string) => {
     if (!selectedTeamForPlayers) return;
     Alert.alert(
       'Remove Player',
@@ -192,7 +194,7 @@ const TeamsManager = () => {
         },
       ]
     );
-  };
+  }, [selectedTeamForPlayers]);
 
   // --- Render Functions ---
 
@@ -200,7 +202,7 @@ const TeamsManager = () => {
    * Renders a single Team Card in the main FlatList.
    * @param item The Team object to render.
    */
-  const renderTeamCard = ({ item }: { item: Team }) => (
+  const renderTeamCard = useCallback(({ item }: { item: Team }) => (
     <View style={styles.teamCard}>
       <Image
         source={{ uri: item.teamLogo || 'https://placehold.co/80x80/CCCCCC/000000?text=Team' }}
@@ -208,7 +210,7 @@ const TeamsManager = () => {
       />
       <View style={styles.teamInfo}>
         <Text style={styles.teamName}>{item.name}</Text>
-        <Text style={styles.teamDetails}>{item.division} | Coach: {item.coachName || 'N/A'}</Text>
+        <Text style={styles.teamDetails}>Coach: {item.coachName || 'N/A'} | {item.division || 'N/A'}</Text>
         <Text style={styles.teamPlayerCount}>{item.players.length} Players</Text>
       </View>
       <View style={styles.teamActions}>
@@ -227,13 +229,13 @@ const TeamsManager = () => {
         <MaterialIcons name="arrow-forward-ios" size={16} color="#fff" style={{ marginLeft: 5 }} />
       </TouchableOpacity>
     </View>
-  );
+  ), [handleEditTeam, handleDeleteTeam, handleManagePlayers]);
 
   /**
    * Renders a single Player Item when managing players for a specific team.
    * @param item The Player object to render.
    */
-  const renderPlayerItem = ({ item }: { item: Player }) => (
+  const renderPlayerItem = useCallback(({ item }: { item: Player }) => (
     <View style={styles.playerCard}>
       <Image
         source={{ uri: item.avatar || 'https://placehold.co/40x40/CCCCCC/000000?text=P' }}
@@ -241,7 +243,7 @@ const TeamsManager = () => {
       />
       <View style={styles.playerInfo}>
         <Text style={styles.playerName}>{item.name}</Text>
-        <Text style={styles.playerDetails}>#{item.jerseyNumber} | {item.position || 'N/A'}</Text>
+        <Text style={styles.playerDetails}>#{item.jerseyNumber || 'N/A'} | {item.position || 'N/A'}</Text>
         {item.email && <Text style={styles.playerEmail}>{item.email}</Text>}
       </View>
       <View style={styles.playerActions}>
@@ -253,10 +255,427 @@ const TeamsManager = () => {
         </TouchableOpacity>
       </View>
     </View>
-  );
+  ), [handleEditPlayerInTeam, handleRemovePlayerFromTeam]);
+
+
+  // --- Internal Form Components ---
+
+  const AddTeamForm = useCallback(() => {
+    const [name, setName] = useState('');
+    const [coachName, setCoachName] = useState('');
+    const [division, setDivision] = useState('');
+    const [teamLogo, setTeamLogo] = useState('');
+
+    const handleSave = () => {
+      if (!name.trim() || !coachName.trim()) {
+        Alert.alert('Missing Info', 'Team name and coach name are required.');
+        return;
+      }
+
+      const newTeam: Team = {
+        id: `t${Date.now()}`, // Simple unique ID
+        name: name.trim(),
+        coachName: coachName.trim(),
+        division: division.trim() || undefined,
+        teamLogo: teamLogo.trim() || undefined,
+        players: [],
+      };
+
+      setTeams(prev => [...prev, newTeam]);
+      Alert.alert('Success', `${name} added successfully!`);
+      setShowAddTeamForm(false); // Close form
+    };
+
+    return (
+      <ScrollView contentContainerStyle={styles.formContainer}>
+        <Text style={styles.formTitle}>Add New Team</Text>
+
+        <Text style={styles.formLabel}>Team Name:</Text>
+        <TextInput
+          style={styles.formInput}
+          value={name}
+          onChangeText={setName}
+          placeholder="e.g., Windhoek Giants"
+          placeholderTextColor="#999"
+        />
+
+        <Text style={styles.formLabel}>Coach Name:</Text>
+        <TextInput
+          style={styles.formInput}
+          value={coachName}
+          onChangeText={setCoachName}
+          placeholder="e.g., Jane Doe"
+          placeholderTextColor="#999"
+        />
+
+        <Text style={styles.formLabel}>Division (Optional):</Text>
+        <TextInput
+          style={styles.formInput}
+          value={division}
+          onChangeText={setDivision}
+          placeholder="e.g., U18 Girls, Senior Men"
+          placeholderTextColor="#999"
+        />
+
+        <Text style={styles.formLabel}>Team Logo URL (Optional):</Text>
+        <TextInput
+          style={styles.formInput}
+          value={teamLogo}
+          onChangeText={setTeamLogo}
+          placeholder="e.g., https://example.com/logo.png"
+          placeholderTextColor="#999"
+        />
+
+        <View style={styles.formButtons}>
+          <TouchableOpacity style={[styles.formButton, styles.cancelButton]} onPress={() => setShowAddTeamForm(false)}>
+            <Text style={styles.formButtonText}>Cancel</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.formButton, styles.saveButton]} onPress={handleSave}>
+            <Text style={styles.formButtonText}>Save Team</Text>
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
+    );
+  }, []); // No dependencies as it manages its own internal state
+
+  const EditTeamForm = useCallback(() => {
+    if (!editingTeam) return null; // Should not happen if rendered correctly
+
+    const [name, setName] = useState(editingTeam.name);
+    const [coachName, setCoachName] = useState(editingTeam.coachName || '');
+    const [division, setDivision] = useState(editingTeam.division || '');
+    const [teamLogo, setTeamLogo] = useState(editingTeam.teamLogo || '');
+
+    const handleSave = () => {
+      if (!name.trim() || !coachName.trim()) {
+        Alert.alert('Missing Info', 'Team name and coach name are required.');
+        return;
+      }
+
+      setTeams(prevTeams =>
+        prevTeams.map(team =>
+          team.id === editingTeam.id
+            ? {
+                ...team,
+                name: name.trim(),
+                coachName: coachName.trim(),
+                division: division.trim() || undefined,
+                teamLogo: teamLogo.trim() || undefined,
+              }
+            : team
+        )
+      );
+      Alert.alert('Success', `${name} updated successfully!`);
+      setEditingTeam(null); // Close form
+    };
+
+    return (
+      <ScrollView contentContainerStyle={styles.formContainer}>
+        <Text style={styles.formTitle}>Edit Team: {editingTeam.name}</Text>
+
+        <Text style={styles.formLabel}>Team Name:</Text>
+        <TextInput
+          style={styles.formInput}
+          value={name}
+          onChangeText={setName}
+          placeholderTextColor="#999"
+        />
+
+        <Text style={styles.formLabel}>Coach Name:</Text>
+        <TextInput
+          style={styles.formInput}
+          value={coachName}
+          onChangeText={setCoachName}
+          placeholderTextColor="#999"
+        />
+
+        <Text style={styles.formLabel}>Division (Optional):</Text>
+        <TextInput
+          style={styles.formInput}
+          value={division}
+          onChangeText={setDivision}
+          placeholderTextColor="#999"
+        />
+
+        <Text style={styles.formLabel}>Team Logo URL (Optional):</Text>
+        <TextInput
+          style={styles.formInput}
+          value={teamLogo}
+          onChangeText={setTeamLogo}
+          placeholderTextColor="#999"
+        />
+
+        <View style={styles.formButtons}>
+          <TouchableOpacity style={[styles.formButton, styles.cancelButton]} onPress={() => setEditingTeam(null)}>
+            <Text style={styles.formButtonText}>Cancel</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.formButton, styles.saveButton]} onPress={handleSave}>
+            <Text style={styles.formButtonText}>Save Changes</Text>
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
+    );
+  }, [editingTeam]); // Re-render if editingTeam changes
+
+  const AddPlayerForm = useCallback(() => {
+    if (!selectedTeamForPlayers) return null;
+
+    const [name, setName] = useState('');
+    const [jerseyNumber, setJerseyNumber] = useState('');
+    const [position, setPosition] = useState('');
+    const [email, setEmail] = useState('');
+    const [avatar, setAvatar] = useState('');
+
+    const handleSave = () => {
+      if (!name.trim()) {
+        Alert.alert('Missing Info', 'Player name is required.');
+        return;
+      }
+
+      const newPlayer: Player = {
+        id: `p${Date.now()}`, // Simple unique ID
+        name: name.trim(),
+        jerseyNumber: jerseyNumber ? parseInt(jerseyNumber, 10) : undefined,
+        position: position.trim() || undefined,
+        email: email.trim() || undefined,
+        avatar: avatar.trim() || undefined,
+      };
+
+      setTeams(prevTeams =>
+        prevTeams.map(team =>
+          team.id === selectedTeamForPlayers.id
+            ? { ...team, players: [...team.players, newPlayer] }
+            : team
+        )
+      );
+      // Update selectedTeamForPlayers to reflect the new player immediately
+      setSelectedTeamForPlayers(prev => prev ? { ...prev, players: [...prev.players, newPlayer] } : null);
+
+      Alert.alert('Success', `${name} added to ${selectedTeamForPlayers.name}!`);
+      setShowAddPlayerForm(false); // Close form
+    };
+
+    return (
+      <ScrollView contentContainerStyle={styles.formContainer}>
+        <Text style={styles.formTitle}>Add Player to {selectedTeamForPlayers.name}</Text>
+
+        <Text style={styles.formLabel}>Player Name:</Text>
+        <TextInput
+          style={styles.formInput}
+          value={name}
+          onChangeText={setName}
+          placeholder="e.g., Jane Smith"
+          placeholderTextColor="#999"
+        />
+
+        <Text style={styles.formLabel}>Jersey Number (Optional):</Text>
+        <TextInput
+          style={styles.formInput}
+          value={jerseyNumber}
+          onChangeText={text => setJerseyNumber(text.replace(/[^0-9]/g, ''))} // Only allow numbers
+          keyboardType="numeric"
+          placeholder="e.g., 23"
+          placeholderTextColor="#999"
+        />
+
+        <Text style={styles.formLabel}>Position (Optional):</Text>
+        <TextInput
+          style={styles.formInput}
+          value={position}
+          onChangeText={setPosition}
+          placeholder="e.g., Forward, Goalkeeper"
+          placeholderTextColor="#999"
+        />
+
+        <Text style={styles.formLabel}>Email (Optional):</Text>
+        <TextInput
+          style={styles.formInput}
+          value={email}
+          onChangeText={setEmail}
+          keyboardType="email-address"
+          placeholder="e.g., player@example.com"
+          placeholderTextColor="#999"
+        />
+
+        <Text style={styles.formLabel}>Avatar URL (Optional):</Text>
+        <TextInput
+          style={styles.formInput}
+          value={avatar}
+          onChangeText={setAvatar}
+          placeholder="e.g., https://example.com/avatar.png"
+          placeholderTextColor="#999"
+        />
+
+        <View style={styles.formButtons}>
+          <TouchableOpacity style={[styles.formButton, styles.cancelButton]} onPress={() => setShowAddPlayerForm(false)}>
+            <Text style={styles.formButtonText}>Cancel</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.formButton, styles.saveButton]} onPress={handleSave}>
+            <Text style={styles.formButtonText}>Add Player</Text>
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
+    );
+  }, [selectedTeamForPlayers]); // Re-render if selectedTeamForPlayers changes
+
+  const EditPlayerForm = useCallback(() => {
+    if (!editingPlayer || !selectedTeamForPlayers) return null;
+
+    const [name, setName] = useState(editingPlayer.name);
+    const [jerseyNumber, setJerseyNumber] = useState(editingPlayer.jerseyNumber?.toString() || '');
+    const [position, setPosition] = useState(editingPlayer.position || '');
+    const [email, setEmail] = useState(editingPlayer.email || '');
+    const [avatar, setAvatar] = useState(editingPlayer.avatar || '');
+
+    const handleSave = () => {
+      if (!name.trim()) {
+        Alert.alert('Missing Info', 'Player name is required.');
+        return;
+      }
+
+      setTeams(prevTeams =>
+        prevTeams.map(team =>
+          team.id === selectedTeamForPlayers.id
+            ? {
+                ...team,
+                players: team.players.map(player =>
+                  player.id === editingPlayer.id
+                    ? {
+                        ...player,
+                        name: name.trim(),
+                        jerseyNumber: jerseyNumber ? parseInt(jerseyNumber, 10) : undefined,
+                        position: position.trim() || undefined,
+                        email: email.trim() || undefined,
+                        avatar: avatar.trim() || undefined,
+                      }
+                    : player
+                ),
+              }
+            : team
+        )
+      );
+      // Update selectedTeamForPlayers to reflect the changes immediately
+      setSelectedTeamForPlayers(prev => {
+        if (!prev) return null;
+        return {
+          ...prev,
+          players: prev.players.map(p =>
+            p.id === editingPlayer.id
+              ? {
+                  ...p,
+                  name: name.trim(),
+                  jerseyNumber: jerseyNumber ? parseInt(jerseyNumber, 10) : undefined,
+                  position: position.trim() || undefined,
+                  email: email.trim() || undefined,
+                  avatar: avatar.trim() || undefined,
+                }
+              : p
+          ),
+        };
+      });
+
+      Alert.alert('Success', `${name} updated successfully!`);
+      setEditingPlayer(null); // Close form
+    };
+
+    return (
+      <ScrollView contentContainerStyle={styles.formContainer}>
+        <Text style={styles.formTitle}>Edit Player: {editingPlayer.name}</Text>
+
+        <Text style={styles.formLabel}>Player Name:</Text>
+        <TextInput
+          style={styles.formInput}
+          value={name}
+          onChangeText={setName}
+          placeholderTextColor="#999"
+        />
+
+        <Text style={styles.formLabel}>Jersey Number (Optional):</Text>
+        <TextInput
+          style={styles.formInput}
+          value={jerseyNumber}
+          onChangeText={text => setJerseyNumber(text.replace(/[^0-9]/g, ''))} // Only allow numbers
+          keyboardType="numeric"
+          placeholderTextColor="#999"
+        />
+
+        <Text style={styles.formLabel}>Position (Optional):</Text>
+        <TextInput
+          style={styles.formInput}
+          value={position}
+          onChangeText={setPosition}
+          placeholderTextColor="#999"
+        />
+
+        <Text style={styles.formLabel}>Email (Optional):</Text>
+        <TextInput
+          style={styles.formInput}
+          value={email}
+          onChangeText={setEmail}
+          keyboardType="email-address"
+          placeholderTextColor="#999"
+        />
+
+        <Text style={styles.formLabel}>Avatar URL (Optional):</Text>
+        <TextInput
+          style={styles.formInput}
+          value={avatar}
+          onChangeText={setAvatar}
+          placeholder="e.g., https://example.com/avatar.png"
+          placeholderTextColor="#999"
+        />
+
+        <View style={styles.formButtons}>
+          <TouchableOpacity style={[styles.formButton, styles.cancelButton]} onPress={() => setEditingPlayer(null)}>
+            <Text style={styles.formButtonText}>Cancel</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.formButton, styles.saveButton]} onPress={handleSave}>
+            <Text style={styles.formButtonText}>Save Changes</Text>
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
+    );
+  }, [editingPlayer, selectedTeamForPlayers]); // Re-render if editingPlayer or selectedTeamForPlayers change
+
+  // --- Determine current view and header content ---
+  const getHeaderContent = () => {
+    let title = 'Manage Teams';
+    let showBackButton = true; // By default, show back button to dashboard
+    let rightButton = <View style={styles.headerButtonPlaceholder} />; // Default: no right button
+
+    let onBackPress = () => router.push('./../admin/Dashboard'); // Default back to Dashboard
+
+    if (showAddTeamForm) {
+      title = 'Add New Team';
+      onBackPress = () => setShowAddTeamForm(false);
+    } else if (editingTeam) {
+      title = `Edit Team: ${editingTeam.name}`;
+      onBackPress = () => setEditingTeam(null);
+    } else if (showAddPlayerForm && selectedTeamForPlayers) {
+      title = `Add Player to ${selectedTeamForPlayers.name}`;
+      onBackPress = () => setShowAddPlayerForm(false);
+    } else if (editingPlayer && selectedTeamForPlayers) {
+      title = `Edit Player: ${editingPlayer.name}`;
+      onBackPress = () => setEditingPlayer(null);
+    } else if (selectedTeamForPlayers) {
+      // Viewing players for a specific team
+      title = `Players for ${selectedTeamForPlayers.name}`;
+      rightButton = ( // Add Player button in header when viewing players
+        <TouchableOpacity style={styles.addPlayerButton} onPress={handleAddPlayerToTeam}>
+          <MaterialIcons name="person-add" size={24} color="#fff" />
+        </TouchableOpacity>
+      );
+      onBackPress = () => setSelectedTeamForPlayers(null); // Back to team list
+    }
+    // For the main "Manage Teams" view, the add team button is now a floating button,
+    // so no right button in the header is needed there.
+
+    return { title, showBackButton, rightButton, onBackPress };
+  };
+
+  const { title, showBackButton, rightButton, onBackPress } = getHeaderContent();
 
   // --- Main Component Render ---
-
   return (
     <KeyboardAvoidingView
       style={styles.container}
@@ -265,32 +684,32 @@ const TeamsManager = () => {
     >
       {/* Header */}
       <View style={styles.header}>
-        {selectedTeamForPlayers ? (
-          <TouchableOpacity onPress={() => setSelectedTeamForPlayers(null)} style={styles.backButton}>
+        {showBackButton ? (
+          <TouchableOpacity onPress={onBackPress} style={styles.backButton}>
             <MaterialIcons name="arrow-back" size={24} color="#333" />
           </TouchableOpacity>
         ) : (
-          <View style={styles.backButtonPlaceholder} /> // Placeholder for alignment
+          <View style={styles.headerButtonPlaceholder} /> // Placeholder for alignment
         )}
         <Image
           source={require('../../../assets/images/logo.jpeg')} // Update this path
           style={styles.headerLogo}
           resizeMode="contain"
         />
-        <Text style={styles.headerTitle}>
-          {selectedTeamForPlayers ? `Players for ${selectedTeamForPlayers.name}` : 'Manage Teams'}
-        </Text>
-        {selectedTeamForPlayers ? (
-          <TouchableOpacity style={styles.addPlayerButton} onPress={handleAddPlayerToTeam}>
-            <MaterialIcons name="person-add" size={24} color="#fff" />
-          </TouchableOpacity>
-        ) : (
-          <View style={styles.backButtonPlaceholder} /> // Placeholder for alignment
-        )}
+        <Text style={styles.headerTitle}>{title}</Text>
+        {rightButton}
       </View>
 
-      {/* Conditional Rendering: Team List or Player List */}
-      {selectedTeamForPlayers ? (
+      {/* Conditional Rendering of main content */}
+      {showAddTeamForm ? (
+        <AddTeamForm />
+      ) : editingTeam ? (
+        <EditTeamForm />
+      ) : showAddPlayerForm ? (
+        <AddPlayerForm />
+      ) : editingPlayer ? (
+        <EditPlayerForm />
+      ) : selectedTeamForPlayers ? (
         // --- Player Management View ---
         <FlatList
           data={selectedTeamForPlayers.players}
@@ -302,7 +721,7 @@ const TeamsManager = () => {
             <View style={styles.emptyListContainer}>
               <MaterialIcons name="group-off" size={60} color="#ccc" />
               <Text style={styles.emptyListText}>No players in this team yet.</Text>
-              <Text style={styles.emptyListSubText}>Tap '+' above to add a new player.</Text>
+              <Text style={styles.emptyListSubText}>Tap '+' in header to add a new player.</Text>
             </View>
           }
         />
@@ -335,7 +754,7 @@ const TeamsManager = () => {
             />
           )}
 
-          {/* Floating Add Team Button */}
+          {/* Floating Add Team Button - Moved back to original position */}
           <TouchableOpacity style={styles.floatingAddButton} onPress={handleAddTeam}>
             <MaterialIcons name="group-add" size={30} color="#fff" />
           </TouchableOpacity>
@@ -354,7 +773,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingTop: 50,
+    paddingTop: 50, // For iOS notch/status bar
     paddingBottom: 10,
     paddingHorizontal: 15,
     backgroundColor: '#fff',
@@ -369,7 +788,6 @@ const styles = StyleSheet.create({
   headerLogo: {
     width: 50,
     height: 50,
-    // No marginBottom here as it's inline with text
   },
   headerTitle: {
     fontSize: 20,
@@ -377,26 +795,29 @@ const styles = StyleSheet.create({
     color: '#333',
     flex: 1, // Allows title to take available space
     textAlign: 'center', // Center the text
-    marginLeft: 10, // Adjust for logo
-    marginRight: 10, // Adjust for buttons
+    marginHorizontal: 10, // Space around title
   },
   backButton: {
     padding: 5,
-    marginRight: 10,
+    // No specific margin-right here, let header handle spacing
   },
-  backButtonPlaceholder: {
-    width: 34, // Match back button size for alignment
+  headerRightButton: {
+    padding: 5,
+    // No specific margin-left here
+  },
+  headerButtonPlaceholder: {
+    width: 34, // Match back button size (24 icon + 5*2 padding) for alignment
     height: 34,
-    marginRight: 10,
+    // Maintain same margin as back button for alignment
   },
-  addPlayerButton: {
-    backgroundColor: '#007AFF',
+  addPlayerButton: { // Style for the Add Player button in the header (used when viewing players)
+    backgroundColor: '#007AFF', // Example color
     borderRadius: 20,
     width: 40,
     height: 40,
     justifyContent: 'center',
     alignItems: 'center',
-    marginLeft: 10,
+    // margin-left auto could work, or just let space-between handle it
   },
   searchBar: {
     backgroundColor: '#fff',
@@ -414,7 +835,7 @@ const styles = StyleSheet.create({
   listContent: {
     paddingHorizontal: 15,
     paddingVertical: 15,
-    paddingBottom: 80, // Space for floating button
+    paddingBottom: 20, // Enough space at bottom
   },
 
   // --- Team Card Styles ---
@@ -505,7 +926,7 @@ const styles = StyleSheet.create({
   },
   playerAvatar: {
     width: 50,
-    height: 50,
+    height: 50, // This was missing in your provided snippet
     borderRadius: 25,
     marginRight: 15,
     backgroundColor: '#ddd',
@@ -531,6 +952,68 @@ const styles = StyleSheet.create({
   playerActions: {
     flexDirection: 'row',
     marginLeft: 10,
+  },
+
+  // --- Forms Styles ---
+  formContainer: {
+    flexGrow: 1, // Allows scrolling for long forms
+    padding: 20,
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    margin: 15,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 3,
+  },
+  formTitle: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  formLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#555',
+    marginBottom: 5,
+    marginTop: 10,
+  },
+  formInput: {
+    backgroundColor: '#f8f8f8',
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 16,
+    color: '#333',
+    marginBottom: 15,
+  },
+  formButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginTop: 20,
+  },
+  formButton: {
+    paddingVertical: 12,
+    paddingHorizontal: 25,
+    borderRadius: 25,
+    alignItems: 'center',
+    minWidth: 120,
+  },
+  saveButton: {
+    backgroundColor: '#007AFF',
+  },
+  cancelButton: {
+    backgroundColor: '#666',
+  },
+  formButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
 
   // --- General & Empty List Styles ---

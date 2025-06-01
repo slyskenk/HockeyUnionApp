@@ -1,5 +1,6 @@
 import { MaterialIcons } from '@expo/vector-icons';
-import React, { useEffect, useState } from 'react';
+import { useRouter } from 'expo-router'; // Import useRouter for navigation
+import React, { useCallback, useEffect, useMemo, useState } from 'react'; // Added useCallback, useMemo
 import {
   Alert,
   Image,
@@ -118,14 +119,17 @@ const INITIAL_PERMISSIONS: RolePermissions = {
 // --- Component Definition ---
 
 const RoleAccess = () => {
+  const router = useRouter(); // Initialize useRouter
   const [currentPermissions, setCurrentPermissions] = useState<RolePermissions>(INITIAL_PERMISSIONS);
   const [selectedRole, setSelectedRole] = useState<UserRole>('Admin'); // Default to Admin
   const [lastUpdated, setLastUpdated] = useState<Record<UserRole, number>>(
     ALL_ROLES.reduce((acc, role) => ({ ...acc, [role]: Date.now() }), {} as Record<UserRole, number>)
   ); // To simulate last save time
 
-  // Track if changes have been made to the selected role's permissions
-  const hasUnsavedChanges = JSON.stringify(currentPermissions[selectedRole]) !== JSON.stringify(INITIAL_PERMISSIONS[selectedRole]);
+  // Memoized check for unsaved changes
+  const hasUnsavedChanges = useMemo(() => {
+    return JSON.stringify(currentPermissions[selectedRole]) !== JSON.stringify(INITIAL_PERMISSIONS[selectedRole]);
+  }, [currentPermissions, selectedRole]);
 
   useEffect(() => {
     // In a real app, you'd fetch permissions from a backend here
@@ -136,7 +140,7 @@ const RoleAccess = () => {
    * Toggles a specific permission for the currently selected role.
    * @param featureKey The key of the feature to toggle.
    */
-  const togglePermission = (featureKey: FeatureKey) => {
+  const togglePermission = useCallback((featureKey: FeatureKey) => {
     setCurrentPermissions(prev => ({
       ...prev,
       [selectedRole]: {
@@ -144,13 +148,13 @@ const RoleAccess = () => {
         [featureKey]: !prev[selectedRole][featureKey],
       },
     }));
-  };
+  }, [selectedRole]);
 
   /**
    * Handles saving the current permission changes.
    * In a real app, this would send data to a backend.
    */
-  const handleSaveChanges = () => {
+  const handleSaveChanges = useCallback(() => {
     Alert.alert(
       'Save Changes',
       `Are you sure you want to save these permissions for ${selectedRole}?`,
@@ -167,12 +171,12 @@ const RoleAccess = () => {
         },
       ]
     );
-  };
+  }, [selectedRole, currentPermissions]); // Added dependencies
 
   /**
    * Handles discarding unsaved changes.
    */
-  const handleDiscardChanges = () => {
+  const handleDiscardChanges = useCallback(() => {
     if (hasUnsavedChanges) {
       Alert.alert(
         'Discard Changes',
@@ -196,18 +200,25 @@ const RoleAccess = () => {
     } else {
       Alert.alert('No Changes', 'There are no unsaved changes to discard.');
     }
-  };
+  }, [hasUnsavedChanges, selectedRole]); // Added dependencies
 
   // Helper to format last updated timestamp
-  const formatLastUpdated = (timestamp: number) => {
+  const formatLastUpdated = useCallback((timestamp: number) => {
     const date = new Date(timestamp);
     return date.toLocaleString(); // Adjust formatting as needed
-  };
+  }, []);
 
   return (
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
+        {/* Back button */}
+        <TouchableOpacity
+          onPress={() => router.push('./../admin/Dashboard')} // Navigate back to Admin Dashboard
+          style={styles.backButton}
+        >
+          <MaterialIcons name="arrow-back" size={24} color="#fff" />
+        </TouchableOpacity>
         <Image
           source={require('../../../assets/images/logo.jpeg')} // Update this path
           style={styles.headerLogo}
@@ -249,16 +260,25 @@ const RoleAccess = () => {
           Last Saved: {formatLastUpdated(lastUpdated[selectedRole])}
         </Text>
 
-        {Object.keys(ALL_FEATURES).map((category) => (
+        {Object.keys(ALL_FEATURES).map((category, categoryIndex) => (
           <View key={category} style={styles.categoryContainer}>
             <Text style={styles.categoryTitle}>{category}</Text>
-            {ALL_FEATURES[category as keyof typeof ALL_FEATURES].map((feature) => (
-              <View key={feature.key} style={styles.permissionItem}>
+            {ALL_FEATURES[category as keyof typeof ALL_FEATURES].map((feature, featureIndex) => (
+              <View
+                key={feature.key}
+                style={[
+                  styles.permissionItem,
+                  // Remove bottom border for the last item in each category
+                  featureIndex === ALL_FEATURES[category as keyof typeof ALL_FEATURES].length - 1 && styles.lastPermissionItem,
+                ]}
+              >
                 <View style={styles.permissionIconText}>
                   <MaterialIcons name={feature.icon} size={22} color="#555" />
                   <View style={styles.permissionTextContainer}>
                     <Text style={styles.permissionLabel}>{feature.label}</Text>
-                    <Text style={styles.permissionDescription}>{feature.description}</Text>
+                    <Text style={styles.permissionDescription} numberOfLines={2}>
+                      {feature.description}
+                    </Text>
                   </View>
                 </View>
                 <Switch
@@ -312,6 +332,17 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 2,
     elevation: 3,
+    flexDirection: 'row', // Added for back button positioning
+    justifyContent: 'center', // Center content
+  },
+  backButton: {
+    position: 'absolute', // Position absolutely
+    left: 15,
+    top: 50, // Align with header padding
+    zIndex: 10, // Ensure it's above other elements
+    backgroundColor: '#007AFF', // Blue circle background
+    borderRadius: 20, // Make it a circle
+    padding: 8, // Padding inside the circle
   },
   headerLogo: {
     width: 60,
@@ -322,6 +353,7 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: 'bold',
     color: '#333',
+    // Removed marginLeft to allow auto-centering with `justifyContent: 'center'`
   },
   roleSelectorContainer: {
     backgroundColor: '#fff',
@@ -412,13 +444,8 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#f0f0f0',
   },
-  permissionItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+  lastPermissionItem: {
+    borderBottomWidth: 0, // No border for the last item in a category
   },
   permissionIconText: {
     flexDirection: 'row',
@@ -439,6 +466,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#666',
     marginTop: 2,
+    numberOfLines: 2, // Added numberOfLines
   },
   actionButtonsContainer: {
     position: 'absolute',

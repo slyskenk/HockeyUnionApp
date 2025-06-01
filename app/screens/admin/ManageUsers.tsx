@@ -1,11 +1,14 @@
 import { MaterialIcons } from '@expo/vector-icons'; // For icons like edit, delete, add
-import React, { useState } from 'react';
+import { useRouter } from 'expo-router'; // Import useRouter for navigation
+import React, { useEffect, useState } from 'react'; // Added useEffect
 import {
   Alert,
   FlatList,
   Image,
   KeyboardAvoidingView,
-  Platform,
+  Modal,
+  Platform, // Import Modal
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -13,12 +16,17 @@ import {
   View,
 } from 'react-native';
 
+// Import Picker for role selection
+import { Picker } from '@react-native-picker/picker';
+
 // Define User type with updated roles
+type UserRole = 'Admin' | 'Other Admin' | 'Coach' | 'Player' | 'Supporter' | 'Fan'; // Type for roles
+
 type User = {
   id: string;
   name: string;
   email: string;
-  role: 'Admin' | 'Other Admin' | 'Coach' | 'Player' | 'Supporter' | 'Fan'; // Added 'Other Admin' and 'Supporter'
+  role: UserRole; // Use the UserRole type
   avatar?: string; // Optional avatar URL
 };
 
@@ -34,8 +42,32 @@ const DUMMY_USERS: User[] = [
 ];
 
 const ManageUsers = () => {
+  const router = useRouter(); // Initialize useRouter
   const [users, setUsers] = useState<User[]>(DUMMY_USERS);
   const [searchQuery, setSearchQuery] = useState('');
+
+  // --- State for the Modal Form ---
+  const [isModalVisible, setIsModalVisible] = useState(false);
+  const [userToEdit, setUserToEdit] = useState<User | null>(null); // Holds user data for editing or null for new user
+  const [formData, setFormData] = useState<Partial<User>>({}); // State for form inputs
+
+  // Effect to initialize form data when modal opens or userToEdit changes
+  useEffect(() => {
+    if (isModalVisible) {
+      if (userToEdit) {
+        setFormData(userToEdit); // Populate with existing user data
+      } else {
+        // Initialize for a new user
+        setFormData({
+          id: `new-${Date.now()}`, // Generate a temporary ID for new user
+          name: '',
+          email: '',
+          role: 'Fan', // Default role for new users
+          avatar: '',
+        });
+      }
+    }
+  }, [isModalVisible, userToEdit]);
 
   // Filter users based on search query
   const filteredUsers = users.filter(user =>
@@ -68,24 +100,90 @@ const ManageUsers = () => {
   };
 
   /**
-   * Handles editing a user (placeholder for navigation to an edit screen).
-   * @param user The user object to edit.
+   * Opens the modal to add a new user.
    */
-  const handleEditUser = (user: User) => {
-    console.log('Edit user:', user.name);
-    // Implement navigation to a user edit screen, passing the user object
-    // router.push({ pathname: '/admin/edit-user', params: { userId: user.id } });
-    Alert.alert('Edit User', `Functionality to edit ${user.name} not implemented.`);
+  const handleAddUser = () => {
+    setUserToEdit(null); // No user to edit, so it's a new one
+    setIsModalVisible(true);
   };
 
   /**
-   * Handles adding a new user (placeholder for navigation to an add screen).
+   * Opens the modal to edit an existing user.
+   * @param user The user object to edit.
    */
-  const handleAddUser = () => {
-    console.log('Add new user');
-    // Implement navigation to a new user creation screen
-    // router.push('/admin/add-user');
-    Alert.alert('Add User', 'Functionality to add new user not implemented.');
+  const handleEditUser = (user: User) => {
+    setUserToEdit(user); // Set the user data to pre-fill the form
+    setIsModalVisible(true);
+  };
+
+  // --- Modal Form Handlers ---
+
+  /**
+   * Updates a specific field of the modal form data.
+   */
+  const handleChangeFormData = (field: keyof User, value: string | UserRole) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  /**
+   * Handles saving the user data from the modal form.
+   */
+  const handleSaveModal = () => {
+    // Basic validation
+    if (!formData.name || !formData.email || !formData.role) {
+      Alert.alert('Missing Information', 'Please fill in Name, Email, and Role.');
+      return;
+    }
+    // Basic email validation
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+        Alert.alert('Invalid Email', 'Please enter a valid email address.');
+        return;
+    }
+
+
+    // Ensure all required fields for User type are present
+    const finalData: User = {
+      id: formData.id || `u${Date.now()}`, // Ensure ID exists for new users
+      name: formData.name,
+      email: formData.email,
+      role: formData.role,
+      avatar: formData.avatar || '',
+    };
+
+    const isNew = !userToEdit; // If userToEdit was null, it's a new user
+
+    if (isNew) {
+      setUsers(prevUsers => [finalData, ...prevUsers]); // Add new user to the beginning
+    } else {
+      setUsers(prevUsers =>
+        prevUsers.map(user => (user.id === finalData.id ? finalData : user))
+      );
+    }
+    setIsModalVisible(false); // Close the modal
+    setUserToEdit(null); // Clear the user being edited
+    Alert.alert('Success', `User ${isNew ? 'added' : 'updated'} successfully!`);
+    // In a real app, send data to your backend API here
+  };
+
+  /**
+   * Handles canceling the modal form.
+   */
+  const handleCancelModal = () => {
+    Alert.alert(
+      'Discard Changes',
+      'Are you sure you want to discard unsaved changes?',
+      [
+        { text: 'No', style: 'cancel' },
+        {
+          text: 'Yes',
+          onPress: () => {
+            setIsModalVisible(false); // Close the modal
+            setUserToEdit(null); // Clear any pending user to edit
+          },
+          style: 'destructive',
+        },
+      ]
+    );
   };
 
   /**
@@ -93,7 +191,11 @@ const ManageUsers = () => {
    * @param item The User object to render.
    */
   const renderUserItem = ({ item }: { item: User }) => (
-    <View style={styles.userCard}>
+    <TouchableOpacity
+      style={styles.userCard}
+      onPress={() => handleEditUser(item)} // Tapping card opens edit modal
+      activeOpacity={0.8}
+    >
       <Image
         source={{ uri: item.avatar || 'https://placehold.co/40x40/CCCCCC/000000?text=User' }}
         style={styles.avatar}
@@ -111,7 +213,7 @@ const ManageUsers = () => {
           <MaterialIcons name="delete" size={24} color="#FF3B30" />
         </TouchableOpacity>
       </View>
-    </View>
+    </TouchableOpacity>
   );
 
   return (
@@ -122,6 +224,10 @@ const ManageUsers = () => {
     >
       {/* Header */}
       <View style={styles.header}>
+        {/* Back button */}
+        <TouchableOpacity onPress={() => router.push('./../admin/Dashboard')} style={styles.backButton}>
+          <MaterialIcons name="arrow-back" size={24} color="#fff" />
+        </TouchableOpacity>
         <Image
           source={require('../../../assets/images/logo.jpeg')} // Update this path
           style={styles.headerLogo}
@@ -158,6 +264,77 @@ const ManageUsers = () => {
       <TouchableOpacity style={styles.floatingAddButton} onPress={handleAddUser}>
         <MaterialIcons name="person-add" size={30} color="#fff" />
       </TouchableOpacity>
+
+      {/* --- Modal Form for Add/Edit User (All within ManageUsers.tsx) --- */}
+      <Modal
+        animationType="slide"
+        transparent={false}
+        visible={isModalVisible}
+        onRequestClose={handleCancelModal}
+      >
+        <KeyboardAvoidingView
+          style={styles.modalContainer}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 60 : 0}
+        >
+          <View style={styles.modalHeader}>
+            <TouchableOpacity onPress={handleCancelModal} style={styles.closeButton}>
+              <MaterialIcons name="close" size={24} color="#FF3B30" />
+            </TouchableOpacity>
+            <Text style={styles.modalTitle}>{userToEdit ? 'Edit User' : 'Add New User'}</Text>
+            <TouchableOpacity onPress={handleSaveModal} style={styles.saveButton}>
+              <MaterialIcons name="check" size={24} color="#007AFF" />
+            </TouchableOpacity>
+          </View>
+
+          <ScrollView contentContainerStyle={styles.formContainer}>
+            <Text style={styles.label}>Name:</Text>
+            <TextInput
+              style={styles.input}
+              value={formData.name}
+              onChangeText={(text) => handleChangeFormData('name', text)}
+              placeholder="User Full Name"
+            />
+
+            <Text style={styles.label}>Email:</Text>
+            <TextInput
+              style={styles.input}
+              value={formData.email}
+              onChangeText={(text) => handleChangeFormData('email', text)}
+              placeholder="user@example.com"
+              keyboardType="email-address"
+              autoCapitalize="none"
+            />
+
+            <Text style={styles.label}>Role:</Text>
+            <View style={styles.pickerContainer}>
+              <Picker
+                selectedValue={formData.role}
+                onValueChange={(itemValue: UserRole) => handleChangeFormData('role', itemValue)}
+                style={styles.picker}
+              >
+                <Picker.Item label="Admin" value="Admin" />
+                <Picker.Item label="Other Admin" value="Other Admin" />
+                <Picker.Item label="Coach" value="Coach" />
+                <Picker.Item label="Player" value="Player" />
+                <Picker.Item label="Supporter" value="Supporter" />
+                <Picker.Item label="Fan" value="Fan" />
+              </Picker>
+            </View>
+
+            <Text style={styles.label}>Avatar URL (Optional):</Text>
+            <TextInput
+              style={styles.input}
+              value={formData.avatar}
+              onChangeText={(text) => handleChangeFormData('avatar', text)}
+              placeholder="Link to user avatar image"
+              keyboardType="url"
+              autoCapitalize="none"
+            />
+
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </Modal>
     </KeyboardAvoidingView>
   );
 };
@@ -179,6 +356,17 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 2,
     elevation: 3,
+    flexDirection: 'row', // Added for back button positioning
+    justifyContent: 'center', // Center content
+  },
+  backButton: {
+    position: 'absolute', // Position absolutely
+    left: 15,
+    top: 50, // Align with header padding
+    zIndex: 10, // Ensure it's above other elements
+    backgroundColor: '#007AFF',
+    borderRadius: 20,
+    padding: 8,
   },
   headerLogo: {
     width: 60,
@@ -189,6 +377,7 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: 'bold',
     color: '#333',
+    marginLeft: 10, // Adjust for logo and back button
   },
   searchBar: {
     backgroundColor: '#fff',
@@ -280,6 +469,71 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#666',
     textAlign: 'center',
+  },
+  // --- Modal Specific Styles (copied from previous event manager file) ---
+  modalContainer: {
+    flex: 1,
+    backgroundColor: '#f0f2f5',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingTop: 50,
+    paddingHorizontal: 15,
+    paddingBottom: 15,
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 3,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  closeButton: {
+    padding: 5,
+  },
+  saveButton: {
+    padding: 5,
+  },
+  formContainer: {
+    padding: 20,
+    paddingBottom: 40,
+  },
+  label: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#555',
+    marginBottom: 5,
+    marginTop: 15,
+  },
+  input: {
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    paddingHorizontal: 15,
+    paddingVertical: 10,
+    fontSize: 16,
+    borderWidth: 1,
+    borderColor: '#ddd',
+    marginBottom: 5,
+  },
+  pickerContainer: {
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#ddd',
+    overflow: 'hidden',
+    marginBottom: 5,
+  },
+  picker: {
+    height: 50,
+    width: '100%',
   },
 });
 
