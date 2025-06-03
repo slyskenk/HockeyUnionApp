@@ -55,7 +55,7 @@ const DUMMY_ANALYTICS: { [key: string]: PlayerAnalyticsData } = {
       { label: 'Goals', value: 8, unit: '', trend: 'up', color: '#34C759' },
       { label: 'Assists', value: 5, unit: '', trend: 'up', color: '#34C759' },
       { label: 'Shots on Target', value: 25, unit: '', trend: 'neutral', color: '#FF9500' },
-      { label: 'Dribble Success %', value: 75, unit: '%', trend: 'up', color: '#34C759' },
+      { label: 'Dribble Success', value: 75, unit: '%', trend: 'up', color: '#34C759' },
       { label: 'Penalty Corners Won', value: 12, unit: '', trend: 'up', color: '#34C759' },
       { label: 'Tackles Won', value: 10, unit: '', trend: 'neutral', color: '#FF9500' },
       { label: 'Interceptions', value: 7, unit: '', trend: 'neutral', color: '#FF9500' },
@@ -71,7 +71,7 @@ const DUMMY_ANALYTICS: { [key: string]: PlayerAnalyticsData } = {
     kpis: [
       { label: 'Goals', value: 3, unit: '', trend: 'neutral', color: '#FF9500' },
       { label: 'Assists', value: 8, unit: '', trend: 'up', color: '#34C759' },
-      { label: 'Pass Accuracy %', value: 88, unit: '%', trend: 'up', color: '#34C759' },
+      { label: 'Pass Accuracy', value: 88, unit: '%', trend: 'up', color: '#34C759' },
       { label: 'Tackles Won', value: 20, unit: '', trend: 'up', color: '#34C759' },
       { label: 'Interceptions', value: 15, unit: '', trend: 'up', color: '#34C759' },
       { label: 'Clearances', value: 5, unit: '', trend: 'neutral', color: '#FF9500' },
@@ -139,7 +139,7 @@ const DUMMY_ANALYTICS: { [key: string]: PlayerAnalyticsData } = {
     kpis: [
       { label: 'Goals', value: 6, unit: '', trend: 'up', color: '#34C759' },
       { label: 'Assists', value: 10, unit: '', trend: 'up', color: '#34C759' },
-      { label: 'Pass Accuracy %', value: 92, unit: '%', trend: 'up', color: '#34C759' },
+      { label: 'Pass Accuracy', value: 92, unit: '%', trend: 'up', color: '#34C759' },
       { label: 'Interceptions', value: 18, unit: '', trend: 'up', color: '#34C759' },
       { label: 'Tackles Won', value: 15, unit: '', trend: 'neutral', color: '#FF9500' },
       { label: 'Distance Covered (Avg)', value: 9.1, unit: 'km', trend: 'up', color: '#34C759' },
@@ -166,14 +166,12 @@ const DUMMY_ANALYTICS: { [key: string]: PlayerAnalyticsData } = {
       "Reliable and consistent defender. Rarely out of position.",
       "Can contribute more to offensive build-up plays.",
     ],
-  }, // <--- Corrected: Added trailing comma here
+  },
 };
 
 const CoachPlayerAnalytics = () => {
   const router = useRouter();
   const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null);
-  const selectedPlayer = DUMMY_PLAYERS.find(p => p.id === selectedPlayerId);
-  const playerAnalytics = selectedPlayerId ? DUMMY_ANALYTICS[selectedPlayerId] : null;
 
   // Set first player as default selected if available
   useEffect(() => {
@@ -181,6 +179,9 @@ const CoachPlayerAnalytics = () => {
       setSelectedPlayerId(DUMMY_PLAYERS[0].id);
     }
   }, [selectedPlayerId]); // Only run once on mount if no player is selected
+
+  const selectedPlayer = DUMMY_PLAYERS.find(p => p.id === selectedPlayerId);
+  const playerAnalytics = selectedPlayerId ? DUMMY_ANALYTICS[selectedPlayerId] : null;
 
   const getTrendIcon = (trend?: 'up' | 'down' | 'neutral') => {
     switch (trend) {
@@ -195,6 +196,33 @@ const CoachPlayerAnalytics = () => {
     if (rating >= 80) return '#34C759'; // Green (Excellent)
     if (rating >= 60) return '#FF9500'; // Orange (Good)
     return '#FF3B30'; // Red (Needs Improvement)
+  };
+
+  const getProgressBarValue = (label: string, value: number | string) => {
+    const numValue = Number(value);
+    if (isNaN(numValue)) return 0; // Handle non-numeric values
+
+    if (label.includes('%')) {
+      return numValue; // Percentage values are already out of 100
+    }
+    if (label.includes('min')) {
+      return Math.min(numValue / 90 * 100, 100); // Max minutes for avg could be ~90
+    }
+    if (label.includes('km')) {
+      return Math.min(numValue / 10 * 100, 100); // Max distance could be ~10km
+    }
+    // For other stats, estimate a reasonable max value for the progress bar visually
+    if (label === 'Goals') return Math.min(numValue / 15 * 100, 100);
+    if (label === 'Assists') return Math.min(numValue / 10 * 100, 100);
+    if (label === 'Tackles Won') return Math.min(numValue / 40 * 100, 100);
+    if (label === 'Interceptions') return Math.min(numValue / 30 * 100, 100);
+    if (label === 'Saves') return Math.min(numValue / 60 * 100, 100);
+    if (label === 'Shots on Target') return Math.min(numValue / 30 * 100, 100);
+    if (label === 'Penalty Corners Won') return Math.min(numValue / 15 * 100, 100);
+    if (label === 'Clearances') return Math.min(numValue / 30 * 100, 100);
+    if (label === 'Defensive Blocks') return Math.min(numValue / 15 * 100, 100);
+
+    return Math.min(numValue / 100 * 100, 100); // Default to out of 100 if no specific range
   };
 
   return (
@@ -215,29 +243,39 @@ const CoachPlayerAnalytics = () => {
           resizeMode="contain"
         />
         <Text style={styles.headerTitle}>Player Analytics</Text>
+        {/* Placeholder to balance the header layout if no right icon is needed */}
         <View style={styles.backButtonPlaceholder} />
       </LinearGradient>
 
-      {/* Player Selector */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.playerSelectorContainer}
-      >
-        {DUMMY_PLAYERS.map((player) => (
-          <TouchableOpacity
-            key={player.id}
-            style={[
-              styles.playerAvatarContainer,
-              selectedPlayerId === player.id && styles.selectedPlayerAvatar,
-            ]}
-            onPress={() => setSelectedPlayerId(player.id)}
-          >
-            <Image source={{ uri: player.avatar }} style={styles.playerAvatar} />
-            <Text style={styles.playerAvatarName}>{player.name.split(' ')[0]}</Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
+      {/* Player Selector - Horizontal Scroll for Player Avatars */}
+      <View style={styles.playerSelectorWrapper}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.playerSelectorContainer}
+        >
+          {DUMMY_PLAYERS.map((player) => (
+            <TouchableOpacity
+              key={player.id}
+              style={[
+                styles.playerAvatarTouch,
+                selectedPlayerId === player.id && styles.playerAvatarSelectedOutline,
+              ]}
+              onPress={() => setSelectedPlayerId(player.id)}
+            >
+              <Image source={{ uri: player.avatar }} style={styles.playerAvatar} />
+              <Text
+                style={[
+                  styles.playerAvatarName,
+                  selectedPlayerId === player.id && styles.playerAvatarNameSelected,
+                ]}
+              >
+                {player.name.split(' ')[0]}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      </View>
 
       {/* Analytics Content */}
       {selectedPlayer && playerAnalytics ? (
@@ -251,10 +289,8 @@ const CoachPlayerAnalytics = () => {
                 #{selectedPlayer.jerseyNumber} - {selectedPlayer.position}
               </Text>
             </View>
-            <View style={[styles.overallRatingContainer, { borderColor: getOverallRatingColor(playerAnalytics.overallRating) }]}>
-              <Text style={[styles.overallRatingText, { color: getOverallRatingColor(playerAnalytics.overallRating) }]}>
-                {playerAnalytics.overallRating}
-              </Text>
+            <View style={[styles.overallRatingBadge, { backgroundColor: getOverallRatingColor(playerAnalytics.overallRating) }]}>
+              <Text style={styles.overallRatingValue}>{playerAnalytics.overallRating}</Text>
               <Text style={styles.overallRatingLabel}>Overall</Text>
             </View>
           </View>
@@ -272,9 +308,17 @@ const CoachPlayerAnalytics = () => {
                   </Text>
                   {getTrendIcon(kpi.trend)}
                 </View>
-                {/* Mock progress bar/indicator */}
+                {/* Visual progress bar */}
                 <View style={styles.kpiProgressBarBackground}>
-                  <View style={[styles.kpiProgressBarFill, { width: `${(Number(kpi.value) / (kpi.label.includes('%') ? 100 : (kpi.label.includes('min') || kpi.label.includes('km') ? 100 : 50))) * 100}%`, backgroundColor: kpi.color || '#4A90E2' }]} />
+                  <View
+                    style={[
+                      styles.kpiProgressBarFill,
+                      {
+                        width: `${getProgressBarValue(kpi.label, kpi.value)}%`,
+                        backgroundColor: kpi.color || '#4A90E2',
+                      },
+                    ]}
+                  />
                 </View>
               </View>
             ))}
@@ -331,7 +375,7 @@ const styles = StyleSheet.create({
     marginRight: 10,
   },
   backButtonPlaceholder: {
-    width: 24 + 10,
+    width: 24 + 10, // To align title, assuming a 24px icon + 10px padding
     height: 24,
   },
   headerLogo: {
@@ -345,11 +389,9 @@ const styles = StyleSheet.create({
     color: '#fff',
     flex: 1,
     textAlign: 'center',
-    marginLeft: -40,
+    marginLeft: -40, // Adjust to center the title taking into account back button
   },
-  playerSelectorContainer: {
-    paddingVertical: 10,
-    paddingHorizontal: 10,
+  playerSelectorWrapper: {
     backgroundColor: '#fff',
     borderBottomWidth: 1,
     borderBottomColor: '#eee',
@@ -358,28 +400,37 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 3,
     elevation: 3,
+    paddingVertical: 8,
   },
-  playerAvatarContainer: {
+  playerSelectorContainer: {
+    paddingHorizontal: 10,
+    alignItems: 'center',
+  },
+  playerAvatarTouch: {
     alignItems: 'center',
     marginHorizontal: 8,
-    paddingVertical: 5,
+    paddingBottom: 5, // Space for name
   },
   playerAvatar: {
     width: 55,
     height: 55,
     borderRadius: 27.5,
     borderWidth: 2,
-    borderColor: 'transparent',
+    borderColor: 'transparent', // Default transparent
     backgroundColor: '#ddd',
   },
-  selectedPlayerAvatar: {
-    borderColor: '#4A90E2', // Highlight selected player
+  playerAvatarSelectedOutline: {
+    borderColor: '#4A90E2', // Highlight color for selected player
   },
   playerAvatarName: {
     fontSize: 12,
-    color: '#333',
-    fontWeight: '600',
+    color: '#666',
+    fontWeight: '500',
     marginTop: 5,
+  },
+  playerAvatarNameSelected: {
+    color: '#4A90E2', // Highlight name color for selected player
+    fontWeight: '700',
   },
   analyticsContent: {
     padding: 15,
@@ -418,7 +469,7 @@ const styles = StyleSheet.create({
     shadowRadius: 5,
     elevation: 8,
     borderLeftWidth: 6,
-    borderLeftColor: '#6633FF',
+    borderLeftColor: '#6633FF', // This will be overridden by dynamic color
   },
   summaryAvatar: {
     width: 70,
@@ -442,21 +493,22 @@ const styles = StyleSheet.create({
     color: '#666',
     marginTop: 2,
   },
-  overallRatingContainer: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    borderWidth: 3,
+  overallRatingBadge: {
+    width: 70,
+    height: 70,
+    borderRadius: 35,
     justifyContent: 'center',
     alignItems: 'center',
+    // backgroundColor will be dynamic
   },
-  overallRatingText: {
-    fontSize: 20,
+  overallRatingValue: {
+    fontSize: 24,
     fontWeight: 'bold',
+    color: '#fff', // White text for rating badge
   },
   overallRatingLabel: {
     fontSize: 10,
-    color: '#666',
+    color: '#fff', // White text for rating badge
     fontWeight: 'bold',
     marginTop: -3,
   },
@@ -484,7 +536,7 @@ const styles = StyleSheet.create({
     shadowRadius: 3,
     elevation: 4,
     borderLeftWidth: 4,
-    borderLeftColor: '#E0E0E0',
+    borderLeftColor: '#E0E0E0', // Default border color, can be customized
   },
   kpiLabel: {
     fontSize: 14,
@@ -501,6 +553,7 @@ const styles = StyleSheet.create({
     fontSize: 22,
     fontWeight: 'bold',
     marginRight: 5,
+    // Color will be dynamic from kpi.color
   },
   kpiProgressBarBackground: {
     height: 6,
@@ -512,6 +565,7 @@ const styles = StyleSheet.create({
   kpiProgressBarFill: {
     height: '100%',
     borderRadius: 3,
+    // backgroundColor will be dynamic from kpi.color
   },
   notesCard: {
     backgroundColor: '#fff',

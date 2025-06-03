@@ -253,7 +253,8 @@ const ChatbotManager = () => { // Changed component name to ChatbotManager
         end={{ x: 1, y: 0.5 }}
         style={styles.header}
       >
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+        {/* MODIFIED: Changed router.back() to router.push('/AdminDashboard') */}
+        <TouchableOpacity onPress={() => router.push('./Dashboard')} style={styles.backButton}>
           <MaterialIcons name="arrow-back" size={24} color="#fff" />
         </TouchableOpacity>
         <Image

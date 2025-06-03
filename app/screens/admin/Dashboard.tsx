@@ -1,22 +1,39 @@
-import { MaterialCommunityIcons } from '@expo/vector-icons'; // Using MaterialCommunityIcons for 'home-outline'
-import { useRouter } from 'expo-router'; // Import useRouter for navigation
-import React from 'react';
-import { Dimensions, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { MaterialCommunityIcons, MaterialIcons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
+import React, { useState } from 'react';
+import { Dimensions, Image, Modal, Pressable, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
-// Get screen width for responsive sizing of grid items
-const { width } = Dimensions.get('window');
-const screenPaddingHorizontal = 20; // Padding from the sides of the screen
+const { width } = Dimensions.get('window'); // Corrected line
+const screenPaddingHorizontal = 20;
 const numColumns = 3;
-const itemGap = 10; // This will be the desired gap between items AND from edges
+const itemGap = 10;
 
-// Calculate item size for 'space-evenly' distribution
 const availableWidthForGrid = width - (2 * screenPaddingHorizontal);
-// With 'space-evenly', there are (numColumns + 1) equal gaps (before first, between, after last)
 const itemSize = (availableWidthForGrid - ((numColumns + 1) * itemGap)) / numColumns;
 
+// Define the interface for a dashboard role
+interface DashboardRole {
+  label: string;
+  route: string;
+}
+
+// Define the available dashboard roles and their corresponding routes
+const DASHBOARD_ROLES: DashboardRole[] = [ // Added type annotation
+  { label: 'Admin Dashboard', route: './../admin/Dashboard' },
+  { label: 'Supporter Dashboard', route: './../supporter/Dashboard' }, // Assuming this path exists
+  { label: 'Player Dashboard', route: './../player/Dashboard' },     // Assuming this path exists
+  { label: 'Coach Dashboard', route: './../coach/Dashboard' },       // Assuming this path exists
+];
+
+// Define the interface for DashboardTab props
+interface DashboardTabProps {
+  iconName: React.ComponentProps<typeof MaterialCommunityIcons>['name']; // More specific type
+  label: string;
+  onPress: () => void;
+}
 
 // Reusable component for a single dashboard tab
-const DashboardTab = ({ iconName, label, onPress }) => (
+const DashboardTab = ({ iconName, label, onPress }: DashboardTabProps) => ( // Added type annotation
   <TouchableOpacity style={styles.tabButton} onPress={onPress}>
     <MaterialCommunityIcons name={iconName} size={itemSize * 0.4} color="#555" />
     <Text style={styles.tabLabel}>{label}</Text>
@@ -24,11 +41,13 @@ const DashboardTab = ({ iconName, label, onPress }) => (
 );
 
 const DashboardScreen = () => {
-  const router = useRouter(); // Initialize router for navigation
+  const router = useRouter();
+  const [showRoleSelector, setShowRoleSelector] = useState(false);
+  const [currentRole, setCurrentRole] = useState<DashboardRole>( // Added type annotation
+    DASHBOARD_ROLES.find(role => role.label === 'Admin Dashboard') || DASHBOARD_ROLES[0]
+  ); // Default to Admin Dashboard, explicitly finding it
 
-  // Updated tabsData with new pages, icons, and navigation links
   const tabsData = [
-    // Removed the Dashboard tab as requested
     { iconName: 'robot-outline', label: 'Chatbot', onPress: () => router.push('./../admin/ChatbotManager') },
     { iconName: 'calendar-edit', label: 'Events', onPress: () => router.push('./../admin/EventsManager') },
     { iconName: 'forum-outline', label: 'Forum', onPress: () => router.push('./../admin/ForumModeration') },
@@ -38,17 +57,35 @@ const DashboardScreen = () => {
     { iconName: 'chart-bar', label: 'Reports', onPress: () => router.push('./../admin/Reports') },
     { iconName: 'key-chain', label: 'Role Access', onPress: () => router.push('./../admin/RoleAccess') },
     { iconName: 'account-group-outline', label: 'Teams', onPress: () => router.push('./../admin/TeamsManager') },
-    { iconName: 'trophy-outline', label: 'Leaderboards', onPress: () => router.push('./../admin/Leaderboards') }, // New page
+    { iconName: 'trophy-outline', label: 'Leaderboards', onPress: () => router.push('./../admin/Leaderboards') },
   ];
 
+  const handleRoleChange = (role: DashboardRole) => { // Added type annotation
+    setCurrentRole(role);
+    setShowRoleSelector(false);
+    router.push(role.route); // Navigate to the selected dashboard
+  };
+
   return (
-    <View style={styles.rootContainer}> {/* This is now the main full-screen container */}
-      {/* Namibia Hockey Union Logo */}
-      <Image
-        source={require('./../../../assets/images/logo.jpeg')} // Updated path to your logo
-        style={styles.logo}
-        resizeMode="contain"
-      />
+    <View style={styles.rootContainer}>
+      {/* Header Area */}
+      <View style={styles.header}>
+        {/* Namibia Hockey Union Logo */}
+        <Image
+          source={require('./../../../assets/images/logo.jpeg')}
+          style={styles.logo}
+          resizeMode="contain"
+        />
+
+        {/* Role Selector Toggle */}
+        <TouchableOpacity
+          style={styles.roleSelectorToggle}
+          onPress={() => setShowRoleSelector(true)}
+        >
+          <Text style={styles.currentRoleText}>{currentRole.label}</Text>
+          <MaterialIcons name="arrow-drop-down" size={24} color="#555" />
+        </TouchableOpacity>
+      </View>
 
       {/* Welcome Admin Text */}
       <Text style={styles.welcomeText}>Welcome Admin</Text>
@@ -65,6 +102,28 @@ const DashboardScreen = () => {
           />
         ))}
       </View>
+
+      {/* Role Selection Modal */}
+      <Modal
+        animationType="fade"
+        transparent={true}
+        visible={showRoleSelector}
+        onRequestClose={() => setShowRoleSelector(false)}
+      >
+        <Pressable style={styles.modalOverlay} onPress={() => setShowRoleSelector(false)}>
+          <View style={styles.modalContent}>
+            {DASHBOARD_ROLES.map((role, index) => (
+              <TouchableOpacity
+                key={index}
+                style={styles.modalRoleOption}
+                onPress={() => handleRoleChange(role)}
+              >
+                <Text style={styles.modalRoleText}>{role.label}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </Pressable>
+      </Modal>
     </View>
   );
 };
@@ -72,20 +131,48 @@ const DashboardScreen = () => {
 const styles = StyleSheet.create({
   rootContainer: {
     flex: 1,
-    backgroundColor: '#fff', // White background fills the entire screen
-    paddingTop: 50, // Space from the top edge of the screen
-    paddingHorizontal: screenPaddingHorizontal, // Apply horizontal padding to the whole screen
-    alignItems: 'center', // Centers content horizontally within the screen's padding
+    backgroundColor: '#fff',
+    paddingTop: 50,
+    paddingHorizontal: screenPaddingHorizontal,
+    alignItems: 'center',
+    justifyContent: 'flex-start',
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    width: '100%',
+    marginBottom: 15,
   },
   logo: {
-    width: 120, // Adjust size as needed
-    height: 120, // Adjust size as needed
-    marginBottom: 15,
+    width: 60,
+    height: 60,
+  },
+  roleSelectorToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f0f0f0',
+    borderRadius: 20,
+    paddingVertical: 8,
+    paddingHorizontal: 15,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 3,
+  },
+  currentRoleText: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#333',
+    marginRight: 5,
   },
   welcomeText: {
     fontSize: 16,
     color: '#555',
     marginBottom: 5,
+    textAlign: 'center', // Centered these based on your previous request
+    width: '100%',
   },
   adminName: {
     fontSize: 22,
@@ -93,22 +180,23 @@ const styles = StyleSheet.create({
     color: '#000',
     marginBottom: 30,
     textTransform: 'uppercase',
+    textAlign: 'center', // Centered these based on your previous request
+    width: '100%',
   },
   tabsGrid: {
     flexDirection: 'row',
-    flexWrap: 'wrap', // Allow items to wrap to the next line
-    justifyContent: 'space-evenly', // Changed to space-evenly for more consistent spacing
-    width: '100%', // Ensure grid takes full width available within screen's padding
+    flexWrap: 'wrap',
+    justifyContent: 'space-evenly',
+    width: '100%',
   },
   tabButton: {
-    width: itemSize, // Use calculated item size
-    height: itemSize, // Make it square
-    backgroundColor: '#f0f0f0', // Light gray background for tabs
+    width: itemSize,
+    height: itemSize,
+    backgroundColor: '#f0f0f0',
     borderRadius: 15,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: itemGap, // Use itemGap for vertical spacing as well
-    // Add subtle shadow for depth
+    marginBottom: itemGap,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
@@ -120,7 +208,36 @@ const styles = StyleSheet.create({
     color: '#555',
     marginTop: 5,
     fontWeight: '500',
-    textAlign: 'center', // Ensure label is centered
+    textAlign: 'center',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    justifyContent: 'flex-start',
+    alignItems: 'flex-end',
+    paddingTop: 80,
+    paddingRight: 20,
+  },
+  modalContent: {
+    backgroundColor: '#fff',
+    borderRadius: 10,
+    paddingVertical: 10,
+    minWidth: 180,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  modalRoleOption: {
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  modalRoleText: {
+    fontSize: 16,
+    color: '#333',
   },
 });
 

@@ -1,319 +1,897 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { MaterialCommunityIcons, MaterialIcons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useRouter } from 'expo-router';
+import React, { useEffect, useRef, useState } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  FlatList,
-  Image,
-  TouchableOpacity,
-  TextInput,
-  KeyboardAvoidingView,
-  Platform,
+  Alert,
   Animated,
-  Keyboard,
+  Dimensions,
+  Image,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
-import { AntDesign } from '@expo/vector-icons';
 
-// Typing indicator animation
-const TypingIndicator = () => {
-  const dot1 = useRef(new Animated.Value(0.3)).current;
-  const dot2 = useRef(new Animated.Value(0.3)).current;
-  const dot3 = useRef(new Animated.Value(0.3)).current;
+const { width, height } = Dimensions.get('window');
 
-  const animateDot = (dot, delay) => {
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(dot, {
-          toValue: 1,
-          duration: 300,
-          delay,
-          useNativeDriver: true,
-        }),
-        Animated.timing(dot, {
-          toValue: 0.3,
-          duration: 300,
-          useNativeDriver: true,
-        }),
-      ])
-    ).start();
+// --- Types ---
+type ForumPost = {
+  id: string;
+  author: string;
+  authorAvatar: string;
+  timestamp: number; // Unix timestamp
+  content: string;
+  likes?: number; // Added for creativity
+};
+
+type ForumTopic = {
+  id: string;
+  title: string;
+  initialPost: ForumPost;
+  replies: ForumPost[];
+  lastActivity: number; // Unix timestamp of last reply or initial post
+  views?: number; // Added for creativity
+};
+
+// --- Helper for formatting dates/times ---
+const formatTimeAgo = (timestamp: number): string => {
+  const seconds = Math.floor((Date.now() - timestamp) / 1000);
+
+  if (seconds < 60) return "Just Now";
+  if (seconds < 3600) return `${Math.floor(seconds / 60)} min ago`;
+  if (seconds < 86400) return `${Math.floor(seconds / 3600)} hour ago`;
+
+  const date = new Date(timestamp);
+  const today = new Date();
+  const yesterday = new Date(today);
+  yesterday.setDate(today.getDate() - 1);
+
+  if (date.toDateString() === today.toDateString()) {
+    return `Today ${date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })}`;
+  }
+  if (date.toDateString() === yesterday.toDateString()) {
+    return `Yesterday ${date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })}`;
+  }
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+};
+
+// --- Dummy Data for Supporters ---
+const CURRENT_SUPPORTER_NAME = 'Sarah P.';
+const CURRENT_SUPPORTER_AVATAR = 'https://placehold.co/40x40/4682B4/FFFFFF?text=SP'; // A more 'supporter' friendly color (Steel Blue)
+
+const DUMMY_SUPPORTER_TOPICS: ForumTopic[] = [
+  {
+    id: 'st1',
+    title: 'Best way to cheer on the team from home?',
+    initialPost: {
+      id: 'sp1_1',
+      author: 'David L.',
+      authorAvatar: 'https://placehold.co/40x40/FFD700/000000?text=DL',
+      timestamp: Date.now() - (1000 * 60 * 60 * 24 * 3), // 3 days ago
+      content: "Can't make it to every game, but I want to make sure my support counts! Any tips for creating a great home-game atmosphere?",
+      likes: 15,
+    },
+    replies: [
+      {
+        id: 'sr1_1',
+        author: 'Maria G.',
+        authorAvatar: 'https://placehold.co/40x40/32CD32/FFFFFF?text=MG',
+        timestamp: Date.now() - (1000 * 60 * 60 * 18), // 18 hours ago
+        content: "We always wear our jerseys, get snacks ready, and mute the TV to blast our own team anthems! It's almost like being there.",
+        likes: 8,
+      },
+      {
+        id: 'sr1_2',
+        author: CURRENT_SUPPORTER_NAME,
+        authorAvatar: CURRENT_SUPPORTER_AVATAR,
+        timestamp: Date.now() - (1000 * 60 * 45), // 45 minutes ago
+        content: "Don't forget to join the live online chats! It's great to connect with other fans during the game.",
+        likes: 12,
+      },
+    ],
+    lastActivity: Date.now() - (1000 * 60 * 45),
+    views: 120,
+  },
+  {
+    id: 'st2',
+    title: 'Ideas for next fundraising event?',
+    initialPost: {
+      id: 'sp2_1',
+      author: 'Jessica A.',
+      authorAvatar: 'https://placehold.co/40x40/FF6347/FFFFFF?text=JA',
+      timestamp: Date.now() - (1000 * 60 * 60 * 24 * 7), // 7 days ago
+      content: "Our community team needs new equipment. I'm looking for creative fundraising ideas that really get people involved. Any suggestions?",
+      likes: 22,
+    },
+    replies: [
+      {
+        id: 'sr2_1',
+        author: 'Tom H.',
+        authorAvatar: 'https://placehold.co/40x40/BA55D3/FFFFFF?text=TH',
+        timestamp: Date.now() - (1000 * 60 * 60 * 24 * 5), // 5 days ago
+        content: "A 'meet the players' BBQ or a penalty shootout challenge with a small entry fee could be fun and engaging!",
+        likes: 15,
+      },
+      {
+        id: 'sr2_2',
+        author: CURRENT_SUPPORTER_NAME,
+        authorAvatar: CURRENT_SUPPORTER_AVATAR,
+        timestamp: Date.now() - (1000 * 60 * 60 * 3), // 3 hours ago
+        content: "What about a virtual 'fan-a-thon' where people pledge per goal scored in a specific match? Good for engagement!",
+        likes: 10,
+      },
+    ],
+    lastActivity: Date.now() - (1000 * 60 * 60 * 3),
+    views: 180,
+  },
+  {
+    id: 'st3',
+    title: 'Favourite team moment this season?',
+    initialPost: {
+      id: 'sp3_1',
+      author: 'Chris W.',
+      authorAvatar: 'https://placehold.co/40x40/ADD8E6/000000?text=CW',
+      timestamp: Date.now() - (1000 * 60 * 60 * 24 * 1), // 1 day ago
+      content: "So many great games! What's everyone's most memorable moment or highlight from the team this season so far?",
+      likes: 30,
+    },
+    replies: [],
+    lastActivity: Date.now() - (1000 * 60 * 60 * 24 * 1),
+    views: 95,
+  },
+];
+
+const SupporterForum = () => { // Renamed component to SupporterForum
+  const router = useRouter();
+  const [topics, setTopics] = useState<ForumTopic[]>(DUMMY_SUPPORTER_TOPICS); // Use supporter dummy data
+  const [createTopicModalVisible, setCreateTopicModalVisible] = useState(false);
+  const [viewTopicModalVisible, setViewTopicModalVisible] = useState(false);
+  const [newTopicTitle, setNewTopicTitle] = useState('');
+  const [newTopicContent, setNewTopicContent] = useState('');
+  const [selectedTopic, setSelectedTopic] = useState<ForumTopic | null>(null);
+  const [newReplyContent, setNewReplyContent] = useState('');
+
+  // Animation for FAB button
+  const fabScale = useRef(new Animated.Value(1)).current;
+
+  // Animation for input focus
+  const [titleInputFocused, setTitleInputFocused] = useState(false);
+  const [contentInputFocused, setContentInputFocused] = useState(false);
+  const [replyInputFocused, setReplyInputFocused] = useState(false);
+
+  // Sort topics by last activity, newest first
+  useEffect(() => {
+    const sortedTopics = [...topics].sort((a, b) => b.lastActivity - a.lastActivity);
+    if (JSON.stringify(sortedTopics) !== JSON.stringify(topics)) {
+        setTopics(sortedTopics);
+    }
+  }, [topics]);
+
+  const handleCreateNewTopic = () => {
+    if (!newTopicTitle.trim() || !newTopicContent.trim()) {
+      Alert.alert('Missing Info', 'Please provide both a title and content for your topic.');
+      return;
+    }
+
+    const newTopic: ForumTopic = {
+      id: `st-${Date.now()}`,
+      title: newTopicTitle.trim(),
+      initialPost: {
+        id: `sp-${Date.now()}`,
+        author: CURRENT_SUPPORTER_NAME, // Supporter's name
+        authorAvatar: CURRENT_SUPPORTER_AVATAR, // Supporter's avatar
+        timestamp: Date.now(),
+        content: newTopicContent.trim(),
+        likes: 0,
+      },
+      replies: [],
+      lastActivity: Date.now(),
+      views: 1, // Start with 1 view
+    };
+
+    setTopics(prev => [...prev, newTopic]);
+    setNewTopicTitle('');
+    setNewTopicContent('');
+    setCreateTopicModalVisible(false);
+    Alert.alert('Success', 'New topic created!');
   };
 
-  useEffect(() => {
-    animateDot(dot1, 0);
-    animateDot(dot2, 150);
-    animateDot(dot3, 300);
-  }, []);
+  const handleAddReply = () => {
+    if (!newReplyContent.trim() || !selectedTopic) {
+      Alert.alert('Empty Reply', 'Please type something before replying.');
+      return;
+    }
+
+    const newReply: ForumPost = {
+      id: `sr-${Date.now()}`,
+      author: CURRENT_SUPPORTER_NAME, // Supporter's name
+      authorAvatar: CURRENT_SUPPORTER_AVATAR, // Supporter's avatar
+      timestamp: Date.now(),
+      content: newReplyContent.trim(),
+      likes: 0,
+    };
+
+    setTopics(prevTopics =>
+      prevTopics.map(topic =>
+        topic.id === selectedTopic.id
+          ? { ...topic, replies: [...topic.replies, newReply], lastActivity: newReply.timestamp }
+          : topic
+      )
+    );
+    setSelectedTopic(prevTopic =>
+      prevTopic ? { ...prevTopic, replies: [...prevTopic.replies, newReply], lastActivity: newReply.timestamp } : null
+    );
+    setNewReplyContent('');
+  };
+
+  const openTopicDetails = (topic: ForumTopic) => {
+    // Increment views (dummy logic)
+    setTopics(prevTopics =>
+      prevTopics.map(t =>
+        t.id === topic.id ? { ...t, views: (t.views || 0) + 1 } : t
+      )
+    );
+    setSelectedTopic({ ...topic, views: (topic.views || 0) + 1 }); // Update selected topic
+    setViewTopicModalVisible(true);
+  };
+
+  const closeTopicDetails = () => {
+    setSelectedTopic(null);
+    setNewReplyContent('');
+    setViewTopicModalVisible(false);
+  };
+
+  const handleLike = (postId: string, isInitialPost: boolean) => {
+    if (!selectedTopic) return;
+
+    if (isInitialPost) {
+      const updatedInitialPost = { ...selectedTopic.initialPost, likes: (selectedTopic.initialPost.likes || 0) + 1 };
+      setSelectedTopic(prev => prev ? { ...prev, initialPost: updatedInitialPost } : null);
+      setTopics(prevTopics => prevTopics.map(t => t.id === selectedTopic.id ? { ...t, initialPost: updatedInitialPost } : t));
+    } else {
+      const updatedReplies = selectedTopic.replies.map(reply =>
+        reply.id === postId ? { ...reply, likes: (reply.likes || 0) + 1 } : reply
+      );
+      setSelectedTopic(prev => prev ? { ...prev, replies: updatedReplies } : null);
+      setTopics(prevTopics => prevTopics.map(t => t.id === selectedTopic.id ? { ...t, replies: updatedReplies } : t));
+    }
+  };
+
+  // FAB animation
+  const animateFabPress = () => {
+    Animated.sequence([
+      Animated.timing(fabScale, { toValue: 0.9, duration: 100, useNativeDriver: true }),
+      Animated.spring(fabScale, { toValue: 1, friction: 3, tension: 40, useNativeDriver: true }),
+    ]).start();
+  };
+
+  const MAX_POST_LENGTH = 500;
 
   return (
-    <View style={styles.typingIndicator}>
-      {[dot1, dot2, dot3].map((dot, index) => (
-        <Animated.View key={index} style={[styles.dot, { opacity: dot }]} />
-      ))}
+    <View style={styles.container}>
+      {/* Gradient Header */}
+      <LinearGradient
+        colors={['#4682B4', '#1E90FF']} // Supporter-centric gradient (blue tones)
+        start={{ x: 0, y: 0.5 }}
+        end={{ x: 1, y: 0.5 }}
+        style={styles.header}
+      >
+        <TouchableOpacity onPress={() => router.push('./Dashboard' as any)} style={styles.backButton}>
+          <MaterialIcons name="arrow-back" size={24} color="#fff" />
+        </TouchableOpacity>
+        <Image
+          source={require('../../../assets/images/logo.jpeg')} // Assuming this path is correct for your logo
+          style={styles.headerLogo}
+          resizeMode="contain"
+        />
+        <Text style={styles.headerTitle}>Supporter Forum</Text>
+        <TouchableOpacity style={styles.headerSearch}>
+          <MaterialIcons name="search" size={24} color="#fff" />
+        </TouchableOpacity>
+      </LinearGradient>
+
+      {/* Forum Topics List */}
+      {topics.length === 0 ? (
+        <View style={styles.emptyStateContainer}>
+          <MaterialCommunityIcons name="forum" size={100} color="#E0E0E0" />
+          <Text style={styles.emptyStateText}>No discussions yet...</Text>
+          <Text style={styles.emptyStateSubText}>Be the first to share your thoughts!</Text>
+        </View>
+      ) : (
+        <ScrollView contentContainerStyle={styles.scrollViewContent}>
+          {topics.map((topic) => (
+            <TouchableOpacity
+              key={topic.id}
+              style={styles.topicCard}
+              onPress={() => openTopicDetails(topic)}
+              activeOpacity={0.7}
+            >
+              <View style={styles.topicHeader}>
+                <Text style={styles.topicCardTitle}>{topic.title}</Text>
+                {/* Hot Topic Indicator */}
+                {topic.replies.length > 2 && (
+                  <View style={styles.hotTopicBadge}>
+                    <MaterialCommunityIcons name="fire" size={16} color="#FF4500" />
+                    <Text style={styles.hotTopicText}>Hot!</Text>
+                  </View>
+                )}
+              </View>
+              <Text style={styles.topicInitialPostSnippet} numberOfLines={2}>
+                {topic.initialPost.content}
+              </Text>
+              <View style={styles.topicFooter}>
+                <View style={styles.topicMetaGroup}>
+                  <MaterialIcons name="person" size={14} color="#666" />
+                  <Text style={styles.topicAuthor}> {topic.initialPost.author}</Text>
+                </View>
+                <View style={styles.topicMetaGroup}>
+                  <MaterialIcons name="chat-bubble-outline" size={14} color="#666" />
+                  <Text style={styles.topicReplies}> {topic.replies.length}</Text>
+                </View>
+                <View style={styles.topicMetaGroup}>
+                  <MaterialIcons name="visibility" size={14} color="#666" />
+                  <Text style={styles.topicViews}> {topic.views || 0}</Text>
+                </View>
+                <Text style={styles.topicLastActivity}>
+                  {formatTimeAgo(topic.lastActivity)}
+                </Text>
+              </View>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      )}
+
+      {/* Floating Action Button to Create New Topic */}
+      <Animated.View style={[styles.fab, { transform: [{ scale: fabScale }] }]}>
+        <TouchableOpacity
+          onPress={() => {
+            animateFabPress();
+            setCreateTopicModalVisible(true);
+          }}
+          style={styles.fabButton}
+        >
+          <MaterialIcons name="add" size={30} color="#fff" />
+        </TouchableOpacity>
+      </Animated.View>
+
+      {/* Create New Topic Modal */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={createTopicModalVisible}
+        onRequestClose={() => setCreateTopicModalVisible(false)}
+      >
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.modalOverlay}
+        >
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Start a New Discussion</Text>
+            <TextInput
+              style={[styles.input, titleInputFocused && styles.inputFocused]}
+              placeholder="Catchy Topic Title (e.g., 'Best Game Day Traditions')"
+              placeholderTextColor="#999"
+              value={newTopicTitle}
+              onChangeText={setNewTopicTitle}
+              onFocus={() => setTitleInputFocused(true)}
+              onBlur={() => setTitleInputFocused(false)}
+            />
+            <TextInput
+              style={[styles.input, styles.textArea, contentInputFocused && styles.inputFocused]}
+              placeholder="Share your thoughts or question here..."
+              placeholderTextColor="#999"
+              multiline
+              value={newTopicContent}
+              onChangeText={(text) => {
+                if (text.length <= MAX_POST_LENGTH) setNewTopicContent(text);
+              }}
+              onFocus={() => setContentInputFocused(true)}
+              onBlur={() => setContentInputFocused(false)}
+            />
+            <Text style={styles.characterCount}>
+              {newTopicContent.length}/{MAX_POST_LENGTH} characters
+            </Text>
+            <View style={styles.modalButtons}>
+              <TouchableOpacity style={styles.cancelButton} onPress={() => setCreateTopicModalVisible(false)}>
+                <Text style={styles.cancelButtonText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.saveButton} onPress={handleCreateNewTopic}>
+                <Text style={styles.saveButtonText}>Post Topic</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
+
+      {/* View Topic Details Modal */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={viewTopicModalVisible}
+        onRequestClose={closeTopicDetails}
+      >
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.modalOverlay}
+        >
+          {selectedTopic && (
+            <View style={styles.topicDetailModalContent}>
+              <View style={styles.topicDetailHeader}>
+                <Text style={styles.topicDetailTitle} numberOfLines={1} ellipsizeMode="tail">
+                  {selectedTopic.title}
+                </Text>
+                <TouchableOpacity onPress={closeTopicDetails} style={styles.closeButton}>
+                  <MaterialIcons name="close" size={24} color="#666" />
+                </TouchableOpacity>
+              </View>
+
+              <ScrollView style={styles.postsScrollView} contentContainerStyle={styles.postsScrollViewContent}>
+                {/* Initial Post */}
+                <View style={[
+                  styles.postCard,
+                  selectedTopic.initialPost.author === CURRENT_SUPPORTER_NAME && styles.myPostCard // Highlight supporter's own posts
+                ]}>
+                  <View style={styles.postHeader}>
+                    <Image source={{ uri: selectedTopic.initialPost.authorAvatar }} style={styles.postAvatar} />
+                    <View style={styles.postAuthorInfo}>
+                      <Text style={styles.postAuthor}>{selectedTopic.initialPost.author}</Text>
+                      <Text style={styles.postTimestamp}>{formatTimeAgo(selectedTopic.initialPost.timestamp)}</Text>
+                    </View>
+                  </View>
+                  <Text style={styles.postContent}>{selectedTopic.initialPost.content}</Text>
+                  <TouchableOpacity style={styles.likeButton} onPress={() => handleLike(selectedTopic.initialPost.id, true)}>
+                    <MaterialIcons name="thumb-up" size={16} color="#4682B4" /> {/* Supporter accent color */}
+                    <Text style={styles.likeButtonText}>{selectedTopic.initialPost.likes || 0}</Text>
+                  </TouchableOpacity>
+                </View>
+
+                {/* Replies */}
+                {selectedTopic.replies.map(reply => (
+                  <View key={reply.id} style={[
+                    styles.postCard,
+                    styles.replyCard,
+                    reply.author === CURRENT_SUPPORTER_NAME && styles.myPostCard // Highlight supporter's own replies
+                  ]}>
+                    <View style={styles.postHeader}>
+                      <Image source={{ uri: reply.authorAvatar }} style={styles.postAvatar} />
+                      <View style={styles.postAuthorInfo}>
+                        <Text style={styles.postAuthor}>{reply.author}</Text>
+                        <Text style={styles.postTimestamp}>{formatTimeAgo(reply.timestamp)}</Text>
+                      </View>
+                    </View>
+                    <Text style={styles.postContent}>{reply.content}</Text>
+                    <TouchableOpacity style={styles.likeButton} onPress={() => handleLike(reply.id, false)}>
+                      <MaterialIcons name="thumb-up" size={16} color="#4682B4" /> {/* Supporter accent color */}
+                      <Text style={styles.likeButtonText}>{reply.likes || 0}</Text>
+                    </TouchableOpacity>
+                  </View>
+                ))}
+              </ScrollView>
+
+              {/* Reply Input */}
+              <View style={styles.replyInputContainer}>
+                <TextInput
+                  style={[styles.replyInput, replyInputFocused && styles.inputFocused]}
+                  placeholder="Type your reply..."
+                  placeholderTextColor="#999"
+                  value={newReplyContent}
+                  onChangeText={setNewReplyContent}
+                  multiline
+                  maxHeight={80}
+                  minHeight={45}
+                  onFocus={() => setReplyInputFocused(true)}
+                  onBlur={() => setReplyInputFocused(false)}
+                />
+                <TouchableOpacity
+                  style={[styles.replySendButton, !newReplyContent.trim() && { opacity: 0.5 }]}
+                  onPress={handleAddReply}
+                  disabled={!newReplyContent.trim()}
+                >
+                  <MaterialIcons name="send" size={24} color="#fff" />
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
+        </KeyboardAvoidingView>
+      </Modal>
     </View>
   );
 };
 
-// Static mock user
-const mockCurrentUser = {
-  uid: 'u1',
-  displayName: 'Tuupoo',
-  photoURL: 'https://i.pravatar.cc/150?img=1',
-};
-
-// Initial mock messages
-const mockMessagesData = [
-  {
-    id: '1',
-    text: 'Welcome to the community!',
-    user: 'John',
-    profilePic: 'https://i.pravatar.cc/150?img=2',
-    uid: 'u2',
-    likes: 2,
-    timestamp: new Date(),
-  },
-  {
-    id: '2',
-    text: 'Glad to be here!',
-    user: 'Tuupoo',
-    profilePic: 'https://i.pravatar.cc/150?img=1',
-    uid: 'u1',
-    likes: 0,
-    timestamp: new Date(),
-  },
-];
-
-const CommunityForumScreen = () => {
-  const [messages, setMessages] = useState(mockMessagesData);
-  const [newMessage, setNewMessage] = useState('');
-  const [typing, setTyping] = useState(false);
-
-  useEffect(() => {
-    let timeout;
-    if (typing) {
-      timeout = setTimeout(() => setTyping(false), 3000);
-    }
-    return () => clearTimeout(timeout);
-  }, [typing]);
-
-  const handleSend = () => {
-    if (!newMessage.trim()) return;
-
-    const newMsg = {
-      id: Date.now().toString(),
-      text: newMessage.trim(),
-      user: mockCurrentUser.displayName,
-      profilePic: mockCurrentUser.photoURL,
-      uid: mockCurrentUser.uid,
-      likes: 0,
-      timestamp: new Date(),
-    };
-
-    setMessages((prev) => [...prev, newMsg]);
-    setNewMessage('');
-    setTyping(false);
-    Keyboard.dismiss();
-  };
-
-  const handleLike = (id) => {
-    setMessages((prevMessages) =>
-      prevMessages.map((msg) =>
-        msg.id === id ? { ...msg, likes: msg.likes + 1 } : msg
-      )
-    );
-  };
-
-  return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      keyboardVerticalOffset={90}
-    >
-      <FlatList
-        data={messages}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.messageList}
-        keyboardShouldPersistTaps="handled"
-        keyboardDismissMode="on-drag"
-        onScrollBeginDrag={() => setTyping(false)}
-        renderItem={({ item }) => {
-          const isOwnMessage = item.uid === mockCurrentUser.uid;
-          return (
-            <View
-              style={[
-                styles.messageBox,
-                isOwnMessage ? styles.myMessageBox : styles.otherMessageBox,
-              ]}
-            >
-              {!isOwnMessage && (
-                <Image source={{ uri: item.profilePic }} style={styles.avatar} />
-              )}
-              <View
-                style={[
-                  styles.messageContent,
-                  isOwnMessage ? styles.myMessageContent : null,
-                ]}
-              >
-                {!isOwnMessage && <Text style={styles.username}>{item.user}</Text>}
-
-                <Text
-                  style={[
-                    styles.messageText,
-                    isOwnMessage ? styles.myMessageText : null,
-                  ]}
-                >
-                  {item.text}
-                </Text>
-
-                <Text style={styles.timestamp}>
-                  {item.timestamp
-                    ? new Date(item.timestamp).toLocaleTimeString([], {
-                        hour: '2-digit',
-                        minute: '2-digit',
-                      })
-                    : ''}
-                </Text>
-
-                <TouchableOpacity
-                  onPress={() => handleLike(item.id)}
-                  style={[
-                    styles.likeRow,
-                    isOwnMessage ? { justifyContent: 'flex-end' } : null,
-                  ]}
-                >
-                  <AntDesign
-                    name="hearto"
-                    size={16}
-                    color={isOwnMessage ? '#1E40AF' : '#2563EB'}
-                  />
-                  <Text style={styles.likes}>{item.likes}</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          );
-        }}
-      />
-
-      {typing && <TypingIndicator />}
-
-      <View style={styles.inputContainer}>
-        <TextInput
-          style={styles.input}
-          value={newMessage}
-          placeholder="Type a message..."
-          onChangeText={(text) => {
-            setNewMessage(text);
-            setTyping(true);
-          }}
-          onSubmitEditing={handleSend}
-        />
-        <TouchableOpacity onPress={handleSend} style={styles.sendButton}>
-          <AntDesign name="arrowright" size={24} color="white" />
-        </TouchableOpacity>
-      </View>
-    </KeyboardAvoidingView>
-  );
-};
-
-export default CommunityForumScreen;
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F4F6F9',
+    backgroundColor: '#f0f2f5',
   },
-  messageList: {
-    padding: 16,
-    paddingBottom: 100,
-  },
-  messageBox: {
+  header: {
     flexDirection: 'row',
-    marginBottom: 16,
-    padding: 12,
-    borderRadius: 12,
-    maxWidth: '80%',
+    alignItems: 'center',
+    paddingTop: 50,
+    paddingBottom: 20,
+    paddingHorizontal: 15,
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 5,
+    elevation: 8,
   },
-  myMessageBox: {
-    alignSelf: 'flex-end',
-    backgroundColor: '#93C5FD',
-    flexDirection: 'row-reverse',
-  },
-  otherMessageBox: {
-    alignSelf: 'flex-start',
-    backgroundColor: '#DBEAFE',
-  },
-  avatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+  backButton: {
+    padding: 5,
     marginRight: 10,
   },
-  messageContent: {
-    flex: 1,
+  // Removed backButtonPlaceholder as it's not needed with a direct back button
+  headerLogo: {
+    width: 40,
+    height: 40,
+    marginRight: 10,
   },
-  myMessageContent: {
-    alignItems: 'flex-end',
-  },
-  username: {
+  headerTitle: {
+    fontSize: 22,
     fontWeight: 'bold',
-    color: '#1E3A8A',
+    color: '#fff',
+    flex: 1,
+    textAlign: 'center',
+    // Adjusted margin to re-center title after adding back button
+    marginLeft: -20, // (backButtonWidth + margin) / 2 approximately
   },
-  messageText: {
-    color: '#1E40AF',
-    marginTop: 4,
+  headerSearch: {
+    padding: 5,
+    marginLeft: 10,
   },
-  myMessageText: {
-    textAlign: 'right',
-    color: '#1E3A8A',
+  scrollViewContent: {
+    padding: 15,
+    paddingBottom: 80, // Space for FAB
   },
-  timestamp: {
-    fontSize: 10,
-    color: '#6B7280',
-    marginTop: 4,
-    textAlign: 'right',
+  emptyStateContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+    minHeight: height * 0.7,
   },
-  likeRow: {
+  emptyStateText: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#666',
+    textAlign: 'center',
+    marginTop: 20,
+  },
+  emptyStateSubText: {
+    fontSize: 14,
+    color: '#999',
+    textAlign: 'center',
+    marginTop: 5,
+  },
+  topicCard: {
+    backgroundColor: '#fff',
+    borderRadius: 15,
+    padding: 18,
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 5,
+    borderLeftWidth: 6,
+    borderLeftColor: '#4682B4', // Supporter accent color (Steel Blue)
+  },
+  topicHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  topicCardTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#333',
+    flex: 1,
+    marginRight: 10,
+  },
+  hotTopicBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 6,
+    backgroundColor: '#FFF0F0',
+    borderRadius: 15,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderColor: '#FF4500',
+    borderWidth: 1,
   },
-  likes: {
-    marginLeft: 6,
-    color: '#2563EB',
+  hotTopicText: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    color: '#FF4500',
+    marginLeft: 4,
   },
-  typingIndicator: {
-    flexDirection: 'row',
-    alignSelf: 'flex-start',
-    marginLeft: 20,
+  topicInitialPostSnippet: {
+    fontSize: 14,
+    color: '#666',
     marginBottom: 10,
+    lineHeight: 20,
   },
-  dot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#60A5FA',
-    marginHorizontal: 3,
-  },
-  inputContainer: {
-    position: 'absolute',
-    bottom: 0,
+  topicFooter: {
     flexDirection: 'row',
-    padding: 12,
-    backgroundColor: '#BFDBFE',
-    width: '100%',
+    justifyContent: 'space-between',
     alignItems: 'center',
+    borderTopWidth: 1,
+    borderTopColor: '#f5f5f5',
+    paddingTop: 10,
+    marginTop: 5,
+  },
+  topicMetaGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginRight: 10,
+  },
+  topicAuthor: {
+    fontSize: 13,
+    color: '#666',
+    marginLeft: 4,
+  },
+  topicReplies: {
+    fontSize: 13,
+    color: '#666',
+    marginLeft: 4,
+  },
+  topicViews: {
+    fontSize: 13,
+    color: '#666',
+    marginLeft: 4,
+  },
+  topicLastActivity: {
+    fontSize: 12,
+    color: '#999',
+  },
+  fab: {
+    position: 'absolute',
+    bottom: 30,
+    right: 30,
+    backgroundColor: '#4682B4', // Supporter FAB color (Steel Blue)
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 5,
+    elevation: 8,
+  },
+  fabButton: {
+    width: '100%',
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalOverlay: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+  },
+  modalContent: {
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    padding: 25,
+    width: '90%',
+    maxHeight: '80%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.3,
+    shadowRadius: 10,
+    elevation: 15,
+  },
+  modalTitle: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 20,
+    textAlign: 'center',
   },
   input: {
-    flex: 1,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    fontSize: 14,
+    backgroundColor: '#f8f8f8',
+    borderRadius: 10,
+    paddingHorizontal: 15,
+    paddingVertical: 12,
+    fontSize: 16,
+    color: '#333',
+    marginBottom: 15,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
   },
-  sendButton: {
-    backgroundColor: '#2563EB',
-    marginLeft: 10,
-    padding: 10,
+  inputFocused: {
+    borderColor: '#4682B4', // Highlight border on focus for supporter
+    shadowColor: '#4682B4',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+  },
+  textArea: {
+    height: 120,
+    textAlignVertical: 'top',
+  },
+  characterCount: {
+    fontSize: 12,
+    color: '#999',
+    textAlign: 'right',
+    marginTop: -10,
+    marginBottom: 10,
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginTop: 20,
+  },
+  cancelButton: {
+    backgroundColor: '#E0E0E0',
+    paddingVertical: 12,
+    paddingHorizontal: 30,
+    borderRadius: 10,
+  },
+  cancelButtonText: {
+    color: '#555',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  saveButton: {
+    backgroundColor: '#4682B4', // Supporter save button color
+    paddingVertical: 12,
+    paddingHorizontal: 30,
+    borderRadius: 10,
+  },
+  saveButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  topicDetailModalContent: {
+    backgroundColor: '#fff',
     borderRadius: 20,
+    padding: 25,
+    width: '95%',
+    height: '90%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.3,
+    shadowRadius: 10,
+    elevation: 15,
+  },
+  topicDetailHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 15,
+    paddingBottom: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  topicDetailTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#333',
+    flex: 1,
+    marginRight: 10,
+  },
+  closeButton: {
+    padding: 5,
+  },
+  postsScrollView: {
+    flex: 1,
+    marginBottom: 15,
+  },
+  postsScrollViewContent: {
+    paddingBottom: 20,
+  },
+  postCard: {
+    backgroundColor: '#f8f8f8',
+    borderRadius: 12,
+    padding: 15,
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 3,
+    elevation: 2,
+    borderLeftWidth: 4,
+    borderLeftColor: '#E0E0E0',
+  },
+  myPostCard: {
+    backgroundColor: '#EEF4FA', // Lighter blue background for own posts
+    borderLeftColor: '#4682B4', // Stronger accent for own posts
+  },
+  replyCard: {
+    marginLeft: 20,
+    backgroundColor: '#F7FAFD', // Slightly different background for replies
+  },
+  postHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  postAvatar: {
+    width: 35,
+    height: 35,
+    borderRadius: 17.5,
+    marginRight: 10,
+    backgroundColor: '#ddd',
+    borderWidth: 1,
+    borderColor: '#eee',
+  },
+  postAuthorInfo: {
+    flex: 1,
+  },
+  postAuthor: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  postTimestamp: {
+    fontSize: 12,
+    color: '#888',
+    marginTop: 2,
+  },
+  postContent: {
+    fontSize: 15,
+    color: '#444',
+    lineHeight: 22,
+    marginBottom: 10,
+  },
+  likeButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 5,
+    paddingHorizontal: 10,
+    backgroundColor: '#F0F0F0',
+    borderRadius: 15,
+    alignSelf: 'flex-start',
+  },
+  likeButtonText: {
+    fontSize: 13,
+    color: '#4682B4', // Supporter accent color
+    marginLeft: 5,
+    fontWeight: 'bold',
+  },
+  replyInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    borderTopWidth: 1,
+    borderTopColor: '#eee',
+    paddingTop: 10,
+  },
+  replyInput: {
+    flex: 1,
+    backgroundColor: '#f0f2f5',
+    borderRadius: 25,
+    paddingHorizontal: 15,
+    paddingVertical: Platform.OS === 'ios' ? 12 : 8,
+    fontSize: 16,
+    color: '#333',
+    marginRight: 10,
+    maxHeight: 80,
+    minHeight: 45,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+  },
+  replySendButton: {
+    backgroundColor: '#4682B4', // Supporter send button color
+    borderRadius: 25,
+    width: 45,
+    height: 45,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: Platform.OS === 'ios' ? 0 : 5,
   },
 });
+
+export default SupporterForum;

@@ -2,11 +2,13 @@
 
 import { MaterialIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useRouter } from 'expo-router'; // For navigation
-import React from 'react';
+import { useRouter } from 'expo-router';
+import React, { useState } from 'react';
 import {
   Dimensions,
   Image,
+  Modal,
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -15,6 +17,12 @@ import {
 } from 'react-native';
 
 const { width, height } = Dimensions.get('window');
+
+// --- Interfaces for TypeScript ---
+interface DashboardRole {
+  label: string;
+  route: string;
+}
 
 // --- Dummy Data ---
 
@@ -53,58 +61,77 @@ const DUMMY_ANNOUNCEMENTS = [
   { id: 'a2', text: 'New FIH Rule updates available in the Resources section.', type: 'alert' },
 ];
 
+// Define the available dashboard roles and their corresponding routes
+const DASHBOARD_ROLES: DashboardRole[] = [
+  { label: 'Admin Dashboard', route: './../admin/Dashboard' },
+  { label: 'Supporter Dashboard', route: './../supporter/Dashboard' },
+  { label: 'Player Dashboard', route: './../player/Dashboard' },
+  { label: 'Coach Dashboard', route: './../coach/Dashboard' },
+];
+
 // --- CoachDashboard Component ---
 
 const CoachDashboard = () => {
   const router = useRouter();
+  const [showRoleSelector, setShowRoleSelector] = useState(false);
+  const [currentRole, setCurrentRole] = useState<DashboardRole>(
+    DASHBOARD_ROLES.find(role => role.label === 'Coach Dashboard') || DASHBOARD_ROLES[0]
+  );
+
+  const handleRoleChange = (role: DashboardRole) => {
+    setCurrentRole(role);
+    setShowRoleSelector(false);
+    // Cast to any to bypass strict type checking for `router.push`
+    router.push(role.route as any); // FIX APPLIED HERE
+  };
 
   // Navigation functions
   const handleViewDetailedStats = () => {
     console.log('Navigating to Player Analytics/Team Stats');
-    router.push('./../coach/PlayerAnalytics'); // Assuming PlayerAnalytics covers detailed team stats
+    router.push('./../coach/PlayerAnalytics' as any); // FIX APPLIED HERE
   };
 
   const handleViewFullSchedule = () => {
     console.log('Navigating to Events Editor (Fixtures)');
-    router.push('./../coach/EventsEditor'); // Assuming EventsEditor handles fixtures/schedule
+    router.push('./../coach/EventsEditor' as any); // FIX APPLIED HERE
   };
 
   const handleManagePlayers = () => {
     console.log('Navigating to Roster Manager');
-    router.push('./../coach/RosterManager');
+    router.push('./../coach/RosterManager' as any); // FIX APPLIED HERE
   };
 
   const handleViewTrainingPlan = () => {
-    console.log('Navigating to Training Planner');
-    router.push('./../coach/TrainingPlanner');
+    console.log('Navigating to TrainingPlanner');
+    router.push('./../coach/TrainingPlanner' as any); // FIX APPLIED HERE
   };
 
   const handleViewAllAnnouncements = () => {
     console.log('Navigating to News Editor (Announcements)');
-    router.push('./../coach/NewsEditor'); // Assuming NewsEditor manages announcements
+    router.push('./../coach/NewsEditor' as any); // FIX APPLIED HERE
   };
 
   const handleGoToTeamChat = () => {
     console.log('Navigating to Tactical Chatbot or dedicated chat');
-    router.push('./../coach/TacticalChatbot');
+    router.push('./../coach/TacticalChatbot' as any); // FIX APPLIED HERE
   };
 
   const handleGoToForum = () => {
     console.log('Navigating to Forum');
-    router.push('./../coach/Forum');
+    router.push('./../coach/Forum' as any); // FIX APPLIED HERE
   };
 
   return (
     <View style={styles.container}>
       {/* Gradient Header */}
       <LinearGradient
-        colors={['#4A90E2', '#283593']} // Consistent gradient
+        colors={['#4A90E2', '#283593']}
         start={{ x: 0, y: 0.5 }}
         end={{ x: 1, y: 0.5 }}
         style={styles.header}
       >
         <Image
-          source={require('../../../assets/images/logo.jpeg')} // Your logo
+          source={require('../../../assets/images/logo.jpeg')}
           style={styles.headerLogo}
           resizeMode="contain"
         />
@@ -112,11 +139,18 @@ const CoachDashboard = () => {
           <Text style={styles.welcomeText}>Welcome, {COACH_NAME}!</Text>
           <Text style={styles.headerTitle}>Coach Dashboard</Text>
         </View>
-        {/* Optional: Add a profile icon or settings icon here */}
+
+        {/* Role Selector Toggle */}
+        <TouchableOpacity
+          style={styles.roleSelectorToggle}
+          onPress={() => setShowRoleSelector(true)}
+        >
+          <Text style={styles.currentRoleText}>{currentRole.label}</Text>
+          <MaterialIcons name="arrow-drop-down" size={24} color="#fff" />
+        </TouchableOpacity>
       </LinearGradient>
 
       <ScrollView contentContainerStyle={styles.scrollViewContent}>
-
         {/* Team Overview Card */}
         <View style={styles.card}>
           <View style={styles.cardHeader}>
@@ -241,8 +275,29 @@ const CoachDashboard = () => {
             <Text style={styles.communicationButtonText}>Team Forum</Text>
           </TouchableOpacity>
         </View>
-
       </ScrollView>
+
+      {/* Role Selection Modal */}
+      <Modal
+        animationType="fade"
+        transparent={true}
+        visible={showRoleSelector}
+        onRequestClose={() => setShowRoleSelector(false)}
+      >
+        <Pressable style={styles.modalOverlay} onPress={() => setShowRoleSelector(false)}>
+          <View style={styles.modalContent}>
+            {DASHBOARD_ROLES.map((role, index) => (
+              <TouchableOpacity
+                key={index}
+                style={styles.modalRoleOption}
+                onPress={() => handleRoleChange(role)}
+              >
+                <Text style={styles.modalRoleText}>{role.label}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </Pressable>
+      </Modal>
     </View>
   );
 };
@@ -250,17 +305,18 @@ const CoachDashboard = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f0f2f5', // Light background
+    backgroundColor: '#f0f2f5',
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     paddingTop: 50,
-    paddingBottom: 20, // More padding for gradient effect
+    paddingBottom: 20,
     paddingHorizontal: 20,
-    borderBottomLeftRadius: 20, // Rounded bottom corners for header
+    borderBottomLeftRadius: 20,
     borderBottomRightRadius: 20,
-    overflow: 'hidden', // Ensures gradient respects border radius
+    overflow: 'hidden',
   },
   headerLogo: {
     width: 60,
@@ -269,6 +325,7 @@ const styles = StyleSheet.create({
   },
   headerTextContainer: {
     flex: 1,
+    marginRight: 10,
   },
   welcomeText: {
     fontSize: 16,
@@ -281,9 +338,23 @@ const styles = StyleSheet.create({
     color: '#fff',
     marginTop: 2,
   },
+  roleSelectorToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    borderRadius: 20,
+    paddingVertical: 8,
+    paddingHorizontal: 15,
+  },
+  currentRoleText: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#fff',
+    marginRight: 5,
+  },
   scrollViewContent: {
     padding: 15,
-    paddingBottom: 30, // Extra padding at bottom
+    paddingBottom: 30,
   },
   card: {
     backgroundColor: '#fff',
@@ -310,8 +381,6 @@ const styles = StyleSheet.create({
     color: '#333',
     marginLeft: 10,
   },
-
-  // Team Overview Styles
   statsRow: {
     flexDirection: 'row',
     justifyContent: 'space-around',
@@ -337,7 +406,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingVertical: 10,
     borderRadius: 10,
-    backgroundColor: '#E6F3FA', // Light blue background
+    backgroundColor: '#E6F3FA',
   },
   fullStatsButtonText: {
     color: '#007AFF',
@@ -345,8 +414,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginRight: 5,
   },
-
-  // Fixtures Styles
   fixtureItem: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -359,7 +426,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: 'bold',
     color: '#333',
-    width: 80, // Fixed width for date
+    width: 80,
   },
   fixtureDetails: {
     flex: 1,
@@ -388,8 +455,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginRight: 5,
   },
-
-  // Player Quick Access Styles
   playerQuickItem: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -416,8 +481,6 @@ const styles = StyleSheet.create({
     color: '#666',
     marginTop: 2,
   },
-
-  // Training Schedule Styles
   trainingDetails: {
     marginBottom: 15,
   },
@@ -434,8 +497,6 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
     marginTop: 10,
   },
-
-  // Announcements Styles
   announcementItem: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -449,8 +510,6 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: '#333',
   },
-
-  // Communication Hub Styles
   communicationButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -470,6 +529,35 @@ const styles = StyleSheet.create({
     color: '#007AFF',
     fontWeight: '600',
     marginLeft: 10,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    justifyContent: 'flex-start',
+    alignItems: 'flex-end',
+    paddingTop: 80,
+    paddingRight: 20,
+  },
+  modalContent: {
+    backgroundColor: '#fff',
+    borderRadius: 10,
+    paddingVertical: 10,
+    minWidth: 180,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  modalRoleOption: {
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  modalRoleText: {
+    fontSize: 16,
+    color: '#333',
   },
 });
 

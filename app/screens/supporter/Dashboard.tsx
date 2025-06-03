@@ -3,10 +3,12 @@
 import { MaterialIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import React from 'react';
+import React, { useState } from 'react'; // Added useState
 import {
   Dimensions,
   Image,
+  Modal, // Added Modal
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -15,6 +17,12 @@ import {
 } from 'react-native';
 
 const { width } = Dimensions.get('window');
+
+// --- Interfaces for TypeScript ---
+interface DashboardRole {
+  label: string;
+  route: string;
+}
 
 // --- Dummy Data for Supporters Dashboard ---
 
@@ -55,50 +63,68 @@ const DUMMY_MERCH_ITEMS = [
   { id: 'm2', name: 'Scorpions Fan Scarf', price: '$20.00', imageUrl: 'https://picsum.photos/seed/scarf/200/200' },
 ];
 
+// Define the available dashboard roles and their corresponding routes
+const DASHBOARD_ROLES: DashboardRole[] = [
+  { label: 'Admin Dashboard', route: './../admin/Dashboard' },
+  { label: 'Supporter Dashboard', route: './../supporter/Dashboard' },
+  { label: 'Player Dashboard', route: './../player/Dashboard' },
+  { label: 'Coach Dashboard', route: './../coach/Dashboard' },
+];
+
 // --- SupportersDashboard Component ---
 
 const SupportersDashboard = () => {
   const router = useRouter();
+  const [showRoleSelector, setShowRoleSelector] = useState(false);
+  const [currentRole, setCurrentRole] = useState<DashboardRole>(
+    DASHBOARD_ROLES.find(role => role.label === 'Supporter Dashboard') || DASHBOARD_ROLES[0]
+  );
+
+  const handleRoleChange = (role: DashboardRole) => {
+    setCurrentRole(role);
+    setShowRoleSelector(false);
+    router.push(role.route as any); // Cast to any to bypass strict type checking for `router.push`
+  };
 
   // Navigation functions for supporters
   const handleViewEvents = () => {
     console.log('Navigating to Supporter Events');
-    router.push('./Events'); // Assuming Events.tsx in same 'supporter' directory
+    router.push('./Events' as any); // Assuming Events.tsx in same 'supporter' directory
   };
 
   const handleViewNews = () => {
     console.log('Navigating to Supporter News');
-    router.push('./News'); // Assuming News.tsx in same 'supporter' directory
+    router.push('./News' as any); // Assuming News.tsx in same 'supporter' directory
   };
 
   const handleGoToChatbot = () => {
     console.log('Navigating to Fan Chatbot');
-    router.push('./FanChatbot'); // Assuming FanChatbot.tsx
+    router.push('./FanChatbot' as any); // Assuming FanChatbot.tsx
   };
 
   const handleGoToForum = () => {
     console.log('Navigating to Fan Forum');
-    router.push('./FanForum'); // Assuming FanForum.tsx
+    router.push('./Forum' as any); // Assuming FanForum.tsx
   };
 
   const handleGoToMerchStore = () => {
     console.log('Navigating to Merch Store');
-    router.push('./MerchStore'); // Assuming MerchStore.tsx
+    router.push('./MerchStore' as any); // Assuming MerchStore.tsx
   };
 
   const handleGoToPollsVoting = () => {
     console.log('Navigating to Polls Voting');
-    router.push('./PollsVoting'); // Assuming PollsVoting.tsx
+    router.push('./PollsVoting' as any); // Assuming PollsVoting.tsx
   };
 
   const handleViewTeams = () => {
     console.log('Navigating to Teams Directory');
-    router.push('./Teams'); // Assuming Teams.tsx
+    router.push('./Teams' as any); // Assuming Teams.tsx
   };
 
   const handleViewLeaderboard = () => {
     console.log('Navigating to League Leaderboard');
-    router.push('./Leaderboard'); // Assuming Leaderboard.tsx
+    router.push('./Leaderboard' as any); // Assuming Leaderboard.tsx
   };
 
   return (
@@ -119,8 +145,14 @@ const SupportersDashboard = () => {
           <Text style={styles.welcomeText}>Welcome, {FAN_NAME}!</Text>
           <Text style={styles.headerTitle}>Your {TEAM_NAME} Hub</Text>
         </View>
-        <TouchableOpacity style={styles.settingsIcon} onPress={() => console.log('Go to Settings')}>
-          <MaterialIcons name="settings" size={24} color="#fff" />
+
+        {/* Role Selector Toggle */}
+        <TouchableOpacity
+          style={styles.roleSelectorToggle}
+          onPress={() => setShowRoleSelector(true)}
+        >
+          <Text style={styles.currentRoleText}>{currentRole.label}</Text>
+          <MaterialIcons name="arrow-drop-down" size={24} color="#fff" />
         </TouchableOpacity>
       </LinearGradient>
 
@@ -287,6 +319,28 @@ const SupportersDashboard = () => {
         </View>
 
       </ScrollView>
+
+      {/* Role Selection Modal */}
+      <Modal
+        animationType="fade"
+        transparent={true}
+        visible={showRoleSelector}
+        onRequestClose={() => setShowRoleSelector(false)}
+      >
+        <Pressable style={styles.modalOverlay} onPress={() => setShowRoleSelector(false)}>
+          <View style={styles.modalContent}>
+            {DASHBOARD_ROLES.map((role, index) => (
+              <TouchableOpacity
+                key={index}
+                style={styles.modalRoleOption}
+                onPress={() => handleRoleChange(role)}
+              >
+                <Text style={styles.modalRoleText}>{role.label}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </Pressable>
+      </Modal>
     </View>
   );
 };
@@ -299,7 +353,7 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between', // Space out logo, text, and settings
+    justifyContent: 'space-between', // Space out logo, text, and toggle
     paddingTop: 50,
     paddingBottom: 25, // More vertical padding
     paddingHorizontal: 20,
@@ -322,23 +376,35 @@ const styles = StyleSheet.create({
   },
   headerTextContainer: {
     flex: 1,
+    marginRight: 10, // Space between text and toggle
   },
   welcomeText: {
     fontSize: 16,
     color: '#fff',
     opacity: 0.9,
-    fontFamily: 'Roboto-Medium', // Example font family
+    // fontFamily: 'Roboto-Medium', // Example font family
   },
   headerTitle: {
     fontSize: 26, // Larger title
     fontWeight: 'bold',
     color: '#fff',
     marginTop: 5,
-    fontFamily: 'Montserrat-Bold', // Example font family
+    // fontFamily: 'Montserrat-Bold', // Example font family
   },
-  settingsIcon: {
-    padding: 5,
-    marginLeft: 15,
+  // New styles for the role selector toggle
+  roleSelectorToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.2)', // Slightly transparent white for contrast
+    borderRadius: 20,
+    paddingVertical: 8,
+    paddingHorizontal: 15,
+  },
+  currentRoleText: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#fff', // White text on gradient background
+    marginRight: 5,
   },
   scrollViewContent: {
     padding: 15,
@@ -629,6 +695,36 @@ const styles = StyleSheet.create({
     color: '#5856D6',
     fontWeight: '600',
     marginLeft: 10,
+  },
+  // Modal specific styles (copied from other dashboards, adjust paddingTop/Right if needed)
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    justifyContent: 'flex-start',
+    alignItems: 'flex-end',
+    paddingTop: 80, // Adjust this to align with your header's height
+    paddingRight: 20, // Adjust this to align with your header's padding
+  },
+  modalContent: {
+    backgroundColor: '#fff',
+    borderRadius: 10,
+    paddingVertical: 10,
+    minWidth: 180,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  modalRoleOption: {
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  modalRoleText: {
+    fontSize: 16,
+    color: '#333',
   },
 });
 

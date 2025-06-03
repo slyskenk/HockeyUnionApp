@@ -1,12 +1,14 @@
 // app/screens/player/Dashboard.tsx
 
-import { MaterialIcons } from '@expo/vector-icons';
+import { MaterialIcons } from '@expo/vector-icons'; // Added MaterialCommunityIcons
 import { LinearGradient } from 'expo-linear-gradient';
-import { useRouter } from 'expo-router'; // For navigation
-import React from 'react';
+import { useRouter } from 'expo-router';
+import React, { useState } from 'react'; // Added useState
 import {
   Dimensions,
   Image,
+  Modal, // Added Modal
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -15,6 +17,12 @@ import {
 } from 'react-native';
 
 const { width, height } = Dimensions.get('window');
+
+// --- Interfaces for TypeScript ---
+interface DashboardRole {
+  label: string;
+  route: string;
+}
 
 // --- Dummy Data (Player Specific) ---
 
@@ -36,56 +44,74 @@ const DUMMY_UPCOMING_EVENTS = [
 
 const DUMMY_TEAM_ANNOUNCEMENTS = [
   { id: 'a1', text: 'Important: Team meeting after practice on Friday.', type: 'alert' },
-  { id: 'a2', text: 'New gym session schedule posted in Training Resources.', type: 'info' }, // Keep as-is for now as it's dummy text.
+  { id: 'a2', text: 'New gym session schedule posted in Training Resources.', type: 'info' },
 ];
 
 const DUMMY_TRAINING_FOCUS = 'Next Session Focus: Defensive Positioning & Set Pieces';
+
+// Define the available dashboard roles and their corresponding routes
+const DASHBOARD_ROLES: DashboardRole[] = [
+  { label: 'Admin Dashboard', route: './../admin/Dashboard' },
+  { label: 'Supporter Dashboard', route: './../supporter/Dashboard' },
+  { label: 'Player Dashboard', route: './../player/Dashboard' },
+  { label: 'Coach Dashboard', route: './../coach/Dashboard' },
+];
 
 // --- PlayerDashboard Component ---
 
 const PlayerDashboard = () => {
   const router = useRouter();
+  const [showRoleSelector, setShowRoleSelector] = useState(false);
+  const [currentRole, setCurrentRole] = useState<DashboardRole>(
+    DASHBOARD_ROLES.find(role => role.label === 'Player Dashboard') || DASHBOARD_ROLES[0]
+  );
+
+  const handleRoleChange = (role: DashboardRole) => {
+    setCurrentRole(role);
+    setShowRoleSelector(false);
+    router.push(role.route as any); // Cast to any to bypass strict type checking for `router.push`
+  };
 
   // Navigation functions (Player specific)
   const handleViewMyStats = () => {
     console.log('Navigating to Player Profile for detailed stats');
-    router.push('./../player/Profile'); // Assuming Profile page shows detailed player stats
+    router.push('./../player/Profile' as any);
   };
 
   const handleViewTeamSchedule = () => {
     console.log('Navigating to Events (Fixtures & Training)');
-    router.push('./../player/Events'); // Events page for full schedule
+    router.push('./../player/Events' as any);
   };
 
   const handleViewTeamMembers = () => {
     console.log('Navigating to My Team (Roster)');
-    router.push('./../player/MyTeam');
+    router.push('./../player/MyTeam' as any);
   };
 
   // Renamed function
   const handleViewTrainingSchedule = () => {
     console.log('Navigating to Training Schedule');
-    router.push('./../player/TrainingScheduleScreen'); // Changed path to TrainingSchedule
+    router.push('./../player/TrainingScheduleScreen' as any);
   };
 
   const handleViewAllTeamNews = () => {
     console.log('Navigating to Player News Screen');
-    router.push('./../player/News'); // Corrected path to News.tsx in the player directory
+    router.push('./../player/News' as any);
   };
 
   const handleGoToChatbot = () => {
     console.log('Navigating to Chatbot');
-    router.push('./../player/Chatbot');
+    router.push('./../player/Chatbot' as any);
   };
 
   const handleGoToForum = () => {
     console.log('Navigating to Forum');
-    router.push('./../player/Forum');
+    router.push('./../player/Forum' as any);
   };
 
   const handleGoToPollsVoting = () => {
     console.log('Navigating to Polls Voting');
-    router.push('./../player/PollsVoting');
+    router.push('./../player/PollsVoting' as any);
   };
 
   return (
@@ -106,11 +132,18 @@ const PlayerDashboard = () => {
           <Text style={styles.welcomeText}>Hello, {PLAYER_NAME}!</Text>
           <Text style={styles.headerTitle}>Player Dashboard</Text>
         </View>
-        {/* Optional: Add a profile icon or settings icon here */}
+
+        {/* Role Selector Toggle */}
+        <TouchableOpacity
+          style={styles.roleSelectorToggle}
+          onPress={() => setShowRoleSelector(true)}
+        >
+          <Text style={styles.currentRoleText}>{currentRole.label}</Text>
+          <MaterialIcons name="arrow-drop-down" size={24} color="#fff" /> {/* Changed color to white */}
+        </TouchableOpacity>
       </LinearGradient>
 
       <ScrollView contentContainerStyle={styles.scrollViewContent}>
-
         {/* My Performance Overview Card - Routable */}
         <TouchableOpacity onPress={handleViewMyStats} style={styles.card}>
           <View style={styles.cardHeader}>
@@ -179,14 +212,14 @@ const PlayerDashboard = () => {
         <TouchableOpacity onPress={handleViewTrainingSchedule} style={styles.card}>
           <View style={styles.cardHeader}>
             <MaterialIcons name="fitness-center" size={24} color="#5856D6" />
-            <Text style={styles.cardTitle}>Training Schedule</Text>{/* Updated title */}
+            <Text style={styles.cardTitle}>Training Schedule</Text>
           </View>
           <View style={styles.trainingDetails}>
             <Text style={styles.trainingText}><MaterialIcons name="accessibility" size={16} color="#333" /> {DUMMY_TRAINING_FOCUS}</Text>
-            <Text style={styles.trainingInfo}>View upcoming training sessions, drills, and fitness plans.</Text>{/* Updated text */}
+            <Text style={styles.trainingInfo}>View upcoming training sessions, drills, and fitness plans.</Text>
           </View>
           <View style={styles.viewAllButton}>
-            <Text style={styles.viewAllButtonText}>View Training Schedule</Text>{/* Updated button text */}
+            <Text style={styles.viewAllButtonText}>View Training Schedule</Text>
             <MaterialIcons name="chevron-right" size={20} color="#007AFF" />
           </View>
         </TouchableOpacity>
@@ -214,7 +247,7 @@ const PlayerDashboard = () => {
           </View>
         </TouchableOpacity>
 
-        {/* Communication & Engagement Hub Card (buttons inside are already routable, so the card itself doesn't need to be wrapped) */}
+        {/* Communication & Engagement Hub Card */}
         <View style={styles.card}>
           <View style={styles.cardHeader}>
             <MaterialIcons name="chat" size={24} color="#FFD700" />
@@ -233,8 +266,29 @@ const PlayerDashboard = () => {
             <Text style={styles.communicationButtonText}>Polls & Voting</Text>
           </TouchableOpacity>
         </View>
-
       </ScrollView>
+
+      {/* Role Selection Modal */}
+      <Modal
+        animationType="fade"
+        transparent={true}
+        visible={showRoleSelector}
+        onRequestClose={() => setShowRoleSelector(false)}
+      >
+        <Pressable style={styles.modalOverlay} onPress={() => setShowRoleSelector(false)}>
+          <View style={styles.modalContent}>
+            {DASHBOARD_ROLES.map((role, index) => (
+              <TouchableOpacity
+                key={index}
+                style={styles.modalRoleOption}
+                onPress={() => handleRoleChange(role)}
+              >
+                <Text style={styles.modalRoleText}>{role.label}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </Pressable>
+      </Modal>
     </View>
   );
 };
@@ -247,6 +301,7 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between', // Added to space out logo and toggle
     paddingTop: 50,
     paddingBottom: 20, // More padding for gradient effect
     paddingHorizontal: 20,
@@ -260,7 +315,8 @@ const styles = StyleSheet.create({
     marginRight: 15,
   },
   headerTextContainer: {
-    flex: 1,
+    flex: 1, // Allows text to take available space
+    marginRight: 10, // Space between text and toggle
   },
   welcomeText: {
     fontSize: 16,
@@ -272,6 +328,21 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#fff',
     marginTop: 2,
+  },
+  // New styles for the role selector toggle
+  roleSelectorToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.2)', // Slightly transparent white for contrast
+    borderRadius: 20,
+    paddingVertical: 8,
+    paddingHorizontal: 15,
+  },
+  currentRoleText: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#fff', // White text on gradient background
+    marginRight: 5,
   },
   scrollViewContent: {
     padding: 15,
@@ -445,6 +516,36 @@ const styles = StyleSheet.create({
     color: '#007AFF',
     fontWeight: '600',
     marginLeft: 10,
+  },
+  // Modal specific styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    justifyContent: 'flex-start',
+    alignItems: 'flex-end',
+    paddingTop: 80, // Adjust this to align with your header's height
+    paddingRight: 20, // Adjust this to align with your header's padding
+  },
+  modalContent: {
+    backgroundColor: '#fff',
+    borderRadius: 10,
+    paddingVertical: 10,
+    minWidth: 180,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  modalRoleOption: {
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  modalRoleText: {
+    fontSize: 16,
+    color: '#333',
   },
 });
 
