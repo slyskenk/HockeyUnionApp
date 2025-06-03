@@ -1,259 +1,635 @@
+// app/screens/supporter/Dashboard.tsx
+
+import { MaterialIcons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useRouter } from 'expo-router';
 import React from 'react';
 import {
-  View,
-  Text,
+  Dimensions,
   Image,
-  TouchableOpacity,
   ScrollView,
   StyleSheet,
-  Platform,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
-import { Ionicons } from '@expo/vector-icons';
-import { MotiView } from 'moti';
-import { useRouter } from 'expo-router';
 
-export default function UserDashboardScreen() {
+const { width } = Dimensions.get('window');
+
+// --- Dummy Data for Supporters Dashboard ---
+
+const FAN_NAME = 'Hockey Fan'; // Could be personalized later
+const TEAM_NAME = 'Desert Scorpions'; // Or the user's favorite team
+
+const DUMMY_UPCOMING_EVENTS = [
+  { id: 'se1', title: 'Next Home Game: vs. Oryx Chargers', date: 'June 15, 2025', time: '19:00', location: 'National Arena' },
+  { id: 'se2', title: 'Fan Meet & Greet', date: 'June 20, 2025', time: '17:00', location: 'Team Clubhouse' },
+  { id: 'se3', title: 'Away Match: vs. Windhoek Titans', date: 'June 22, 2025', time: '16:00', location: 'Windhoek Sports Complex' },
+];
+
+const DUMMY_LATEST_NEWS = [
+  { id: 'sn1', title: 'Scorpions Secure Playoff Berth!', snippet: 'A thrilling victory last night officially seals our spot in the playoffs...', imageUrl: 'https://picsum.photos/seed/playoff/300/200' },
+  { id: 'sn2', title: 'Injury Update: Star Forward Returns', snippet: 'After weeks on the sidelines, our star forward is cleared to play...', imageUrl: 'https://picsum.photos/seed/injury/300/200' },
+];
+
+const DUMMY_LEADERBOARD = [
+  { team: 'Desert Scorpions', points: 38, wins: 12, losses: 3 },
+  { team: 'Oryx Chargers', points: 35, wins: 11, losses: 4 },
+  { team: 'Windhoek Titans', points: 30, wins: 9, losses: 6 },
+  { team: 'Coastal Sharks', points: 25, wins: 7, losses: 8 },
+];
+
+const DUMMY_POLL = {
+  id: 'p1',
+  question: 'Who will be the MVP of this season?',
+  options: [
+    { id: 'opt1', text: 'Alex "The Blitzer" Smith', votes: 150 },
+    { id: 'opt2', text: 'Maria "The Wall" Garcia', votes: 120 },
+    { id: 'opt3', text: 'Sam "The Sniper" Jones', votes: 90 },
+  ],
+  totalVotes: 360,
+};
+
+const DUMMY_MERCH_ITEMS = [
+  { id: 'm1', name: 'Official Team Jersey', price: '$65.00', imageUrl: 'https://picsum.photos/seed/jersey/200/200' },
+  { id: 'm2', name: 'Scorpions Fan Scarf', price: '$20.00', imageUrl: 'https://picsum.photos/seed/scarf/200/200' },
+];
+
+// --- SupportersDashboard Component ---
+
+const SupportersDashboard = () => {
   const router = useRouter();
 
+  // Navigation functions for supporters
+  const handleViewEvents = () => {
+    console.log('Navigating to Supporter Events');
+    router.push('./Events'); // Assuming Events.tsx in same 'supporter' directory
+  };
+
+  const handleViewNews = () => {
+    console.log('Navigating to Supporter News');
+    router.push('./News'); // Assuming News.tsx in same 'supporter' directory
+  };
+
+  const handleGoToChatbot = () => {
+    console.log('Navigating to Fan Chatbot');
+    router.push('./FanChatbot'); // Assuming FanChatbot.tsx
+  };
+
+  const handleGoToForum = () => {
+    console.log('Navigating to Fan Forum');
+    router.push('./FanForum'); // Assuming FanForum.tsx
+  };
+
+  const handleGoToMerchStore = () => {
+    console.log('Navigating to Merch Store');
+    router.push('./MerchStore'); // Assuming MerchStore.tsx
+  };
+
+  const handleGoToPollsVoting = () => {
+    console.log('Navigating to Polls Voting');
+    router.push('./PollsVoting'); // Assuming PollsVoting.tsx
+  };
+
+  const handleViewTeams = () => {
+    console.log('Navigating to Teams Directory');
+    router.push('./Teams'); // Assuming Teams.tsx
+  };
+
+  const handleViewLeaderboard = () => {
+    console.log('Navigating to League Leaderboard');
+    router.push('./Leaderboard'); // Assuming Leaderboard.tsx
+  };
+
   return (
-    <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 32 }}>
-      {/* Header */}
+    <View style={styles.container}>
+      {/* Gradient Header */}
       <LinearGradient
-        colors={['#2E5AAC', '#3D7BE5']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
+        colors={['#FF6F61', '#E63946']} // Warm, energetic colors
+        start={{ x: 0, y: 0.5 }}
+        end={{ x: 1, y: 0.5 }}
         style={styles.header}
       >
-        <Text style={styles.headerTitle}>🏒 Welcome, Supporter Name!</Text>
-        <Text style={styles.headerSubtitle}>Your hockey hub</Text>
+        <Image
+          source={require('../../../assets/images/logo.jpeg')} // Your team logo
+          style={styles.headerLogo}
+          resizeMode="contain"
+        />
+        <View style={styles.headerTextContainer}>
+          <Text style={styles.welcomeText}>Welcome, {FAN_NAME}!</Text>
+          <Text style={styles.headerTitle}>Your {TEAM_NAME} Hub</Text>
+        </View>
+        <TouchableOpacity style={styles.settingsIcon} onPress={() => console.log('Go to Settings')}>
+          <MaterialIcons name="settings" size={24} color="#fff" />
+        </TouchableOpacity>
       </LinearGradient>
 
-      {/* Featured News */}
-      <DashboardCard delay={0} icon="newspaper" title="Featured News" onPress={() => router.push('/screens/supporter/News')}>
-        <Image source={require('../../../assets/images/d-news.png')} style={styles.image} />
-        <Text style={styles.cardText}>Latest: Namibia Hawks Win Regional Championship!</Text>
-      </DashboardCard>
-
-      {/* Upcoming Events */}
-      <DashboardCard delay={100} icon="calendar" title="Upcoming Events" onPress={() => router.push('/screens/supporter/Events')}>
-        <TouchableOpacity style={styles.eventRow}>
-          <Image source={require('../../../assets/images/team-A.jpg')} style={styles.logo} />
-          <Text style={styles.buttonText}>Team A vs Team B – June 1</Text>
-          <Image source={require('../../../assets/images/team-B.png')} style={styles.logo} />
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.eventRow}>
-          <Image source={require('../../../assets/images/team-A.jpg')} style={styles.logo} />
-          <Text style={styles.buttonText}>Team C vs Team D – June 5</Text>
-          <Image source={require('../../../assets/images/team-B.png')} style={styles.logo} />
-        </TouchableOpacity>
-      </DashboardCard>
-
-      {/* Favorite Teams */}
-      <DashboardCard delay={200} icon="sports-hockey" title="Favorite Teams" onPress={() => router.push('/screens/supporter/PollsVoting')}>
-        <TouchableOpacity style={styles.teamRow}>
-          <Image source={require('../../../assets/images/team-B.png')} style={styles.logo} />
-          <Text style={styles.buttonText}>Namibia Hawks</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.teamRow}>
-          <Image source={require('../../../assets/images/team-B.png')} style={styles.logo} />
-          <Text style={styles.buttonText}>Desert Blazers</Text>
-        </TouchableOpacity>
-      </DashboardCard>
-
-      {/* Fan Forum */}
-      <DashboardCard delay={300} icon="chat" title="Fan Forum" onPress={() => router.push('/screens/supporter/Forum')}>
-        <TouchableOpacity style={styles.button}>
-          <Text style={styles.buttonText}>Top Discussions 🔥</Text>
-        </TouchableOpacity>
-      </DashboardCard>
-
-      {/* Ask HockeyBot */}
-      <DashboardCard delay={400} icon="robot" title="Ask our HockeyBot" onPress={() => router.push('/screens/supporter/FanChatbot')}>
-        <TouchableOpacity style={styles.button}>
-          <Text style={styles.buttonText}>Ask a Question 🤖</Text>
-        </TouchableOpacity>
-      </DashboardCard>
-
-      {/* Player Poll */}
-      <DashboardCard delay={500} icon="bar-chart" title="Top Player Poll" onPress={() => router.push('/screens/supporter/PollsVoting')}>
-        <Text style={styles.cardText}>🏆 Current Votes:</Text>
-        <View style={styles.pollRow}>
-          <Image source={require('../../../assets/images/player.jpg')} style={styles.playerImage} />
-          <Text style={styles.pollText}>Player A</Text>
-          <Text style={styles.pollText}>42%</Text>
+      <ScrollView contentContainerStyle={styles.scrollViewContent}>
+        {/* Quick Links / Main Actions Grid */}
+        <View style={styles.quickLinksGrid}>
+          <TouchableOpacity style={styles.quickLinkButton} onPress={handleViewEvents}>
+            <MaterialIcons name="event" size={36} color="#FF6F61" />
+            <Text style={styles.quickLinkText}>Events</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.quickLinkButton} onPress={handleViewNews}>
+            <MaterialIcons name="article" size={36} color="#4A90E2" />
+            <Text style={styles.quickLinkText}>News</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.quickLinkButton} onPress={handleGoToMerchStore}>
+            <MaterialIcons name="shopping-cart" size={36} color="#34C759" />
+            <Text style={styles.quickLinkText}>Merch Store</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.quickLinkButton} onPress={handleViewLeaderboard}>
+            <MaterialIcons name="leaderboard" size={36} color="#FFC107" />
+            <Text style={styles.quickLinkText}>Leaderboard</Text>
+          </TouchableOpacity>
         </View>
-        <View style={styles.pollRow}>
-          <Image source={require('../../../assets/images/player.jpg')} style={styles.playerImage} />
-          <Text style={styles.pollText}>Player B</Text>
-          <Text style={styles.pollText}>35%</Text>
+
+        {/* Upcoming Events Card */}
+        <TouchableOpacity onPress={handleViewEvents} style={styles.card}>
+          <View style={styles.cardHeader}>
+            <MaterialIcons name="sports-hockey" size={24} color="#E63946" />
+            <Text style={styles.cardTitle}>Next Games & Events</Text>
+            <MaterialIcons name="arrow-forward-ios" size={18} color="#999" />
+          </View>
+          {DUMMY_UPCOMING_EVENTS.slice(0, 2).map(event => ( // Show top 2
+            <View key={event.id} style={styles.eventItem}>
+              <View style={styles.eventDateBox}>
+                <Text style={styles.eventDateDay}>{event.date.split(' ')[1].replace(',', '')}</Text>
+                <Text style={styles.eventDateMonth}>{event.date.split(' ')[0]}</Text>
+              </View>
+              <View style={styles.eventDetails}>
+                <Text style={styles.eventTitle}>{event.title}</Text>
+                <Text style={styles.eventInfo}>{event.location} at {event.time}</Text>
+              </View>
+            </View>
+          ))}
+          <TouchableOpacity onPress={handleViewEvents} style={styles.viewAllButton}>
+            <Text style={styles.viewAllButtonText}>View All Events</Text>
+            <MaterialIcons name="chevron-right" size={20} color="#E63946" />
+          </TouchableOpacity>
+        </TouchableOpacity>
+
+        {/* Latest News Card */}
+        <TouchableOpacity onPress={handleViewNews} style={styles.card}>
+          <View style={styles.cardHeader}>
+            <MaterialIcons name="newspaper" size={24} color="#4A90E2" />
+            <Text style={styles.cardTitle}>Latest Team News</Text>
+            <MaterialIcons name="arrow-forward-ios" size={18} color="#999" />
+          </View>
+          {DUMMY_LATEST_NEWS.map(news => (
+            <View key={news.id} style={styles.newsItem}>
+              {news.imageUrl && (
+                <Image source={{ uri: news.imageUrl }} style={styles.newsThumbnail} />
+              )}
+              <View style={styles.newsContent}>
+                <Text style={styles.newsItemTitle}>{news.title}</Text>
+                <Text style={styles.newsItemSnippet}>{news.snippet}</Text>
+              </View>
+            </View>
+          ))}
+          <TouchableOpacity onPress={handleViewNews} style={styles.viewAllButton}>
+            <Text style={styles.viewAllButtonText}>Read All News</Text>
+            <MaterialIcons name="chevron-right" size={20} color="#4A90E2" />
+          </TouchableOpacity>
+        </TouchableOpacity>
+
+        {/* Polls Voting Card */}
+        <TouchableOpacity onPress={handleGoToPollsVoting} style={styles.card}>
+          <View style={styles.cardHeader}>
+            <MaterialIcons name="how-to-vote" size={24} color="#A726C2" />
+            <Text style={styles.cardTitle}>Fan Polls</Text>
+            <MaterialIcons name="arrow-forward-ios" size={18} color="#999" />
+          </View>
+          <Text style={styles.pollQuestion}>{DUMMY_POLL.question}</Text>
+          {DUMMY_POLL.options.map(option => (
+            <View key={option.id} style={styles.pollOption}>
+              <Text style={styles.pollOptionText}>{option.text}</Text>
+              <Text style={styles.pollOptionVotes}>
+                {((option.votes / DUMMY_POLL.totalVotes) * 100).toFixed(0)}%
+              </Text>
+              <View style={[styles.pollBar, { width: `${(option.votes / DUMMY_POLL.totalVotes) * 100}%` }]} />
+            </View>
+          ))}
+          <TouchableOpacity onPress={handleGoToPollsVoting} style={styles.viewAllButton}>
+            <Text style={styles.viewAllButtonText}>Vote Now!</Text>
+            <MaterialIcons name="chevron-right" size={20} color="#A726C2" />
+          </TouchableOpacity>
+        </TouchableOpacity>
+
+        {/* League Leaderboard Card */}
+        <TouchableOpacity onPress={handleViewLeaderboard} style={styles.card}>
+          <View style={styles.cardHeader}>
+            <MaterialIcons name="emoji-events" size={24} color="#FFD700" />
+            <Text style={styles.cardTitle}>League Standings</Text>
+            <MaterialIcons name="arrow-forward-ios" size={18} color="#999" />
+          </View>
+          <View style={styles.leaderboardHeader}>
+            <Text style={styles.leaderboardHeaderText}>Team</Text>
+            <Text style={styles.leaderboardHeaderText}>W</Text>
+            <Text style={styles.leaderboardHeaderText}>L</Text>
+            <Text style={styles.leaderboardHeaderText}>Pts</Text>
+          </View>
+          {DUMMY_LEADERBOARD.map((team, index) => (
+            <View key={team.team} style={[styles.leaderboardRow, index === 0 && styles.leaderboardTopRow]}>
+              <Text style={[styles.leaderboardCell, styles.leaderboardTeamName, index === 0 && styles.leaderboardTopText]}>{team.team}</Text>
+              <Text style={[styles.leaderboardCell, index === 0 && styles.leaderboardTopText]}>{team.wins}</Text>
+              <Text style={[styles.leaderboardCell, index === 0 && styles.leaderboardTopText]}>{team.losses}</Text>
+              <Text style={[styles.leaderboardCell, styles.leaderboardPoints, index === 0 && styles.leaderboardTopText]}>{team.points}</Text>
+            </View>
+          ))}
+          <TouchableOpacity onPress={handleViewLeaderboard} style={styles.viewAllButton}>
+            <Text style={styles.viewAllButtonText}>View Full Leaderboard</Text>
+            <MaterialIcons name="chevron-right" size={20} color="#FFD700" />
+          </TouchableOpacity>
+        </TouchableOpacity>
+
+        {/* Merch Store Showcase Card */}
+        <TouchableOpacity onPress={handleGoToMerchStore} style={styles.card}>
+          <View style={styles.cardHeader}>
+            <MaterialIcons name="storefront" size={24} color="#34C759" />
+            <Text style={styles.cardTitle}>Team Merch Store</Text>
+            <MaterialIcons name="arrow-forward-ios" size={18} color="#999" />
+          </View>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.merchScrollContainer}>
+            {DUMMY_MERCH_ITEMS.map(item => (
+              <View key={item.id} style={styles.merchItem}>
+                <Image source={{ uri: item.imageUrl }} style={styles.merchImage} />
+                <Text style={styles.merchName}>{item.name}</Text>
+                <Text style={styles.merchPrice}>{item.price}</Text>
+              </View>
+            ))}
+          </ScrollView>
+          <TouchableOpacity onPress={handleGoToMerchStore} style={styles.viewAllButton}>
+            <Text style={styles.viewAllButtonText}>Browse All Items</Text>
+            <MaterialIcons name="chevron-right" size={20} color="#34C759" />
+          </TouchableOpacity>
+        </TouchableOpacity>
+
+        {/* Community Hub (Chatbot & Forum) Card */}
+        <View style={styles.card}>
+          <View style={styles.cardHeader}>
+            <MaterialIcons name="groups" size={24} color="#5856D6" />
+            <Text style={styles.cardTitle}>Community Hub</Text>
+          </View>
+          <TouchableOpacity style={styles.communityButton} onPress={handleGoToChatbot}>
+            <MaterialIcons name="smart-toy" size={20} color="#5856D6" />
+            <Text style={styles.communityButtonText}>Fan Chatbot</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.communityButton} onPress={handleGoToForum}>
+            <MaterialIcons name="forum" size={20} color="#5856D6" />
+            <Text style={styles.communityButtonText}>Fan Forum</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.communityButton} onPress={handleViewTeams}>
+            <MaterialIcons name="people-alt" size={20} color="#5856D6" />
+            <Text style={styles.communityButtonText}>Explore Teams</Text>
+          </TouchableOpacity>
         </View>
-        <View style={styles.pollRow}>
-          <Image source={require('../../../assets/images/player.jpg')} style={styles.playerImage} />
-          <Text style={styles.pollText}>Player C</Text>
-          <Text style={styles.pollText}>23%</Text>
-        </View>
-      </DashboardCard>
-    </ScrollView>
+
+      </ScrollView>
+    </View>
   );
-}
-
-function DashboardCard({
-  children,
-  delay,
-  icon,
-  title,
-  onPress,
-}: {
-  children: React.ReactNode;
-  delay?: number;
-  icon: any;
-  title: string;
-  onPress?: () => void;
-}) {
-  const content = (
-    <MotiView
-      from={{ opacity: 0, translateY: 20 }}
-      animate={{ opacity: 1, translateY: 0 }}
-      delay={delay || 0}
-      style={styles.card}
-    >
-      <View style={styles.cardHeader}>
-        <Ionicons name={icon} size={20} color="#2E5AAC" />
-        <Text style={styles.cardTitle}>{title}</Text>
-      </View>
-      {children}
-    </MotiView>
-  );
-
-  return onPress ? <TouchableOpacity activeOpacity={0.9} onPress={onPress}>{content}</TouchableOpacity> : content;
-}
+};
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: '#F4F6F9',
+    flex: 1,
+    backgroundColor: '#F7F7F7', // Lighter, more vibrant background
   },
   header: {
-    paddingVertical: 32,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between', // Space out logo, text, and settings
+    paddingTop: 50,
+    paddingBottom: 25, // More vertical padding
     paddingHorizontal: 20,
-    borderBottomLeftRadius: 30,
+    borderBottomLeftRadius: 30, // More pronounced rounding
     borderBottomRightRadius: 30,
-    marginBottom: 16,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 }, // Stronger shadow
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 12, // Higher elevation for Android
+  },
+  headerLogo: {
+    width: 55,
+    height: 55,
+    borderRadius: 27.5, // Circular logo
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.7)',
+    marginRight: 15,
+  },
+  headerTextContainer: {
+    flex: 1,
+  },
+  welcomeText: {
+    fontSize: 16,
+    color: '#fff',
+    opacity: 0.9,
+    fontFamily: 'Roboto-Medium', // Example font family
   },
   headerTitle: {
-    color: '#fff',
-    fontSize: 26,
+    fontSize: 26, // Larger title
     fontWeight: 'bold',
+    color: '#fff',
+    marginTop: 5,
+    fontFamily: 'Montserrat-Bold', // Example font family
   },
-  headerSubtitle: {
-    color: '#e0e0e0',
-    marginTop: 4,
-    fontSize: 14,
+  settingsIcon: {
+    padding: 5,
+    marginLeft: 15,
   },
+  scrollViewContent: {
+    padding: 15,
+    paddingBottom: 40,
+  },
+  // --- Quick Links Grid ---
+  quickLinksGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    marginBottom: 20,
+  },
+  quickLinkButton: {
+    width: (width - 45) / 2, // Two columns with padding
+    backgroundColor: '#FFFFFF',
+    borderRadius: 15,
+    paddingVertical: 20,
+    paddingHorizontal: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 15,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 5,
+    borderWidth: 1,
+    borderColor: '#eee',
+  },
+  quickLinkText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#333',
+    marginTop: 8,
+  },
+  // --- Card Styles ---
   card: {
     backgroundColor: '#fff',
-    borderRadius: 16,
-    marginHorizontal: 16,
-    padding: 16,
+    borderRadius: 20, // More rounded corners
+    padding: 20,
     marginBottom: 20,
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOpacity: 0.1,
-        shadowOffset: { width: 0, height: 4 },
-        shadowRadius: 6,
-      },
-      android: {
-        elevation: 4,
-      },
-    }),
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 }, // More prominent shadow
+    shadowOpacity: 0.15,
+    shadowRadius: 10,
+    elevation: 10,
+    borderWidth: StyleSheet.hairlineWidth, // Subtle border
+    borderColor: '#E0E0E0',
   },
   cardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 8,
+    justifyContent: 'space-between', // Space out title and arrow
+    marginBottom: 15,
+    paddingBottom: 10,
+    borderBottomWidth: StyleSheet.hairlineWidth, // Thinner separator
+    borderBottomColor: '#F0F0F0',
   },
   cardTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#333',
+    marginLeft: 10,
+    flex: 1, // Take up remaining space
+  },
+  viewAllButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    marginTop: 15,
+    paddingVertical: 5,
+  },
+  viewAllButtonText: {
+    color: '#E63946', // Match card theme or primary color
+    fontSize: 15,
+    fontWeight: '600',
+    marginRight: 5,
+  },
+
+  // --- Events Card Specific Styles ---
+  eventItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+    paddingVertical: 8,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#F8F8F8',
+  },
+  eventDateBox: {
+    backgroundColor: '#FF6F61',
+    borderRadius: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    alignItems: 'center',
+    marginRight: 15,
+    width: 60, // Fixed width for date box
+  },
+  eventDateDay: {
     fontSize: 18,
     fontWeight: 'bold',
-    marginLeft: 8,
-    color: '#2E5AAC',
+    color: '#fff',
   },
-  image: {
-    height: 160,
-    borderRadius: 12,
-    marginBottom: 10,
-    backgroundColor: '#ccc',
+  eventDateMonth: {
+    fontSize: 12,
+    color: '#fff',
+    textTransform: 'uppercase',
   },
-  cardText: {
-    fontSize: 15,
+  eventDetails: {
+    flex: 1,
+  },
+  eventTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
     color: '#333',
-    marginBottom: 8,
+    marginBottom: 2,
   },
-  button: {
-    backgroundColor: '#F0F4FF',
-    borderColor: '#C7D2E4',
-    borderWidth: 1,
-    borderRadius: 10,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    marginTop: 8,
-    alignItems: 'center',
+  eventInfo: {
+    fontSize: 13,
+    color: '#666',
+  },
+
+  // --- News Card Specific Styles ---
+  newsItem: {
     flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 15,
+    paddingBottom: 10,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#F8F8F8',
   },
-  buttonText: {
-    color: '#2E5AAC',
+  newsThumbnail: {
+    width: 80,
+    height: 60,
+    borderRadius: 10,
+    marginRight: 15,
+    backgroundColor: '#eee',
+  },
+  newsContent: {
+    flex: 1,
+  },
+  newsItemTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 3,
+  },
+  newsItemSnippet: {
+    fontSize: 13,
+    color: '#666',
+  },
+
+  // --- Polls Voting Card Specific Styles ---
+  pollQuestion: {
+    fontSize: 17,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 15,
+    textAlign: 'center',
+  },
+  pollOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F0F0F0',
+    borderRadius: 10,
+    marginBottom: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 15,
+    overflow: 'hidden', // To contain the bar
+  },
+  pollOptionText: {
+    flex: 1,
+    fontSize: 15,
     fontWeight: '600',
+    color: '#333',
+    zIndex: 1, // Ensure text is above bar
+  },
+  pollOptionVotes: {
     fontSize: 15,
+    fontWeight: 'bold',
+    color: '#333',
+    marginLeft: 10,
+    zIndex: 1,
   },
-  logo: {
-    width: 50,
-    height: 50,
-    marginHorizontal: 6,
-    borderRadius: 20,
-  },
-  eventRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F0F4FF',
-    borderColor: '#C7D2E4',
-    borderWidth: 1,
+  pollBar: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(167, 38, 194, 0.2)', // Lighter version of icon color
     borderRadius: 10,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    marginTop: 8,
-    justifyContent: 'space-between',
+    zIndex: 0,
   },
-  teamRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F0F4FF',
-    borderColor: '#C7D2E4',
-    borderWidth: 1,
-    borderRadius: 10,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    marginTop: 8,
-  },
-  pollRow: {
+
+  // --- Leaderboard Card Specific Styles ---
+  leaderboardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 6,
+    paddingBottom: 10,
+    marginBottom: 5,
     borderBottomWidth: 1,
-    borderBottomColor: '#eee',
+    borderBottomColor: '#E0E0E0',
   },
-  pollText: {
-    fontSize: 15,
-    fontWeight: '500',
-    color: '#444',
+  leaderboardHeaderText: {
+    fontWeight: 'bold',
+    fontSize: 14,
+    color: '#666',
     flex: 1,
     textAlign: 'center',
   },
-  playerImage: {
-    width: 80,
-    height: 80,
-    borderRadius: 15,
-    marginRight: 6,
+  leaderboardRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 8,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#F8F8F8',
+  },
+  leaderboardTopRow: {
+    backgroundColor: '#FFFBE6', // Light gold background for top team
+    borderRadius: 8,
+    paddingVertical: 10,
+    borderBottomWidth: 0,
+  },
+  leaderboardCell: {
+    fontSize: 15,
+    color: '#333',
+    flex: 1,
+    textAlign: 'center',
+  },
+  leaderboardTeamName: {
+    fontWeight: 'bold',
+    textAlign: 'left',
+    paddingLeft: 5,
+  },
+  leaderboardPoints: {
+    fontWeight: 'bold',
+    color: '#E63946', // Highlight points
+  },
+  leaderboardTopText: {
+    color: '#E63946', // Make top team's text stand out
+  },
+
+  // --- Merch Store Card Specific Styles ---
+  merchScrollContainer: {
+    paddingRight: 10, // Provide some space at the end
+  },
+  merchItem: {
+    alignItems: 'center',
+    marginRight: 15,
+    width: 120, // Fixed width for each merch item
+  },
+  merchImage: {
+    width: 100,
+    height: 100,
+    borderRadius: 10,
+    backgroundColor: '#f0f0f0',
+    marginBottom: 8,
+  },
+  merchName: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#333',
+    textAlign: 'center',
+    marginBottom: 4,
+  },
+  merchPrice: {
+    fontSize: 13,
+    fontWeight: 'bold',
+    color: '#E63946',
+  },
+
+  // --- Community Hub Specific Styles ---
+  communityButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F0F8FF', // Light blue background
+    paddingVertical: 12,
+    paddingHorizontal: 15,
+    borderRadius: 10,
+    marginBottom: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  communityButtonText: {
+    fontSize: 16,
+    color: '#5856D6',
+    fontWeight: '600',
+    marginLeft: 10,
   },
 });
+
+export default SupportersDashboard;

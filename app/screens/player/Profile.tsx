@@ -1,19 +1,65 @@
-import React from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  Image,
-  TouchableOpacity,
-  Platform,
-} from 'react-native';
+import { Ionicons, MaterialIcons } from '@expo/vector-icons'; // Import MaterialIcons for the camera icon
+import * as ImagePicker from 'expo-image-picker'; // Import ImagePicker
 import { LinearGradient } from 'expo-linear-gradient';
-import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import React, { useState } from 'react'; // Import useState
+import {
+  Alert,
+  Image,
+  Linking,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 
 export default function PlayerProfileScreen() {
   const router = useRouter();
+
+  const coachPhoneNumber = 'tel:+1234567890'; // Replace with the actual coach's phone number
+
+  // State for the player's profile image
+  const [profileImage, setProfileImage] = useState<string | null>(
+    'https://images.unsplash.com/photo-1617019114583-0b83f9c09d3d' // Initial dummy image
+  );
+
+  const handleCallCoach = async () => {
+    try {
+      const supported = await Linking.canOpenURL(coachPhoneNumber);
+
+      if (supported) {
+        await Linking.openURL(coachPhoneNumber);
+      } else {
+        Alert.alert('Error', `Phone calls are not supported on this device or the number is invalid: ${coachPhoneNumber}`);
+      }
+    } catch (error) {
+      console.error('An error occurred while trying to make a call:', error);
+      Alert.alert('Error', 'Could not initiate call. Please try again later.');
+    }
+  };
+
+  // Function to pick an image from the device's library
+  const pickImage = async () => {
+    // Request media library permissions
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permission Required', 'Please grant media library permissions to select a profile picture.');
+      return;
+    }
+
+    let result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true, // Allow user to crop/edit the image
+      aspect: [1, 1], // Force a square aspect ratio for profile pictures
+      quality: 1, // High quality
+    });
+
+    if (!result.canceled) {
+      setProfileImage(result.assets[0].uri); // Set the selected image URI as the profile image
+    }
+  };
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 40 }}>
@@ -32,10 +78,15 @@ export default function PlayerProfileScreen() {
 
       {/* Profile Section */}
       <View style={styles.profileSection}>
-        <Image
-          source={{ uri: 'https://images.unsplash.com/photo-1617019114583-0b83f9c09d3d' }}
-          style={styles.avatar}
-        />
+        <TouchableOpacity style={styles.avatarContainer} onPress={pickImage}>
+          <Image
+            source={{ uri: profileImage || 'https://placehold.co/120x120/CCCCCC/FFFFFF?text=No+Image' }} // Use profileImage state, fallback to placeholder
+            style={styles.avatar}
+          />
+          <View style={styles.editAvatarOverlay}>
+            <MaterialIcons name="camera-alt" size={30} color="#fff" />
+          </View>
+        </TouchableOpacity>
         <Text style={styles.name}>Jason Carter</Text>
         <Text style={styles.position}>Forward | #17</Text>
       </View>
@@ -63,7 +114,7 @@ export default function PlayerProfileScreen() {
       <View style={styles.aboutSection}>
         <Text style={styles.sectionTitle}>About Me</Text>
         <Text style={styles.aboutText}>
-          Passionate hockey player with a strong offensive mindset and dedication to teamwork. Always striving for
+          Passionionate hockey player with a strong offensive mindset and dedication to teamwork. Always striving for
           improvement and bringing energy to the ice every game.
         </Text>
       </View>
@@ -88,8 +139,8 @@ export default function PlayerProfileScreen() {
       </View>
 
       {/* Contact Coach Button */}
-      <TouchableOpacity style={styles.contactButton}>
-        <Ionicons name="chatbubble-ellipses-outline" size={20} color="#fff" style={{ marginRight: 8 }} />
+      <TouchableOpacity style={styles.contactButton} onPress={handleCallCoach}>
+        <Ionicons name="call-outline" size={20} color="#fff" style={{ marginRight: 8 }} />
         <Text style={styles.contactButtonText}>Contact Coach</Text>
       </TouchableOpacity>
     </ScrollView>
@@ -117,11 +168,34 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 24,
   },
-  avatar: {
+  // New styles for avatar and edit overlay
+  avatarContainer: {
     width: 120,
     height: 120,
     borderRadius: 60,
     marginBottom: 12,
+    backgroundColor: '#ccc', // Placeholder background
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  avatar: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 60,
+    resizeMode: 'cover',
+  },
+  editAvatarOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    borderRadius: 20,
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#fff',
   },
   name: {
     fontSize: 22,

@@ -1,316 +1,451 @@
+// app/screens/player/Dashboard.tsx
+
+import { MaterialIcons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useRouter } from 'expo-router'; // For navigation
 import React from 'react';
 import {
-  View,
-  Text,
+  Dimensions,
   Image,
-  TouchableOpacity,
   ScrollView,
   StyleSheet,
-  Platform,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
-import { Ionicons } from '@expo/vector-icons';
-import { MotiView } from 'moti';
-import { useRouter } from 'expo-router';
 
-function DashboardCard({
-  children,
-  delay,
-  icon,
-  title,
-  onPress,
-}: {
-  children: React.ReactNode;
-  delay?: number;
-  icon: keyof typeof Ionicons.glyphMap;
-  title: string;
-  onPress?: () => void;
-}) {
-  const content = (
-    <MotiView
-      from={{ opacity: 0, translateY: 20 }}
-      animate={{ opacity: 1, translateY: 0 }}
-      transition={{ type: 'timing', duration: 500 }}
-      delay={delay || 0}
-      style={styles.card}
-    >
-      <View style={styles.cardHeader}>
-        <Ionicons name={icon} size={20} color="#2E5AAC" />
-        <Text style={styles.cardTitle}>{title}</Text>
-      </View>
-      {children}
-    </MotiView>
-  );
+const { width, height } = Dimensions.get('window');
 
-  return onPress ? <TouchableOpacity activeOpacity={0.8} onPress={onPress}>{content}</TouchableOpacity> : content;
-}
+// --- Dummy Data (Player Specific) ---
 
-export default function PlayerDashboardScreen() {
+const PLAYER_NAME = 'Alex "The Blitzer" Smith';
+const PLAYER_TEAM = 'Desert Scorpions (Men)';
+const PLAYER_JERSEY_NUMBER = 7;
+
+const DUMMY_PLAYER_STATS = {
+  goals: 15,
+  assists: 8,
+  gamesPlayed: 10,
+  manOfTheMatch: 3,
+};
+
+const DUMMY_UPCOMING_EVENTS = [
+  { id: 'e1', date: 'June 10', time: '18:00', type: 'Match', opponent: 'Oryx Chargers', location: 'National Stadium' },
+  { id: 'e2', date: 'June 12', time: '16:00', type: 'Training', focus: 'Attacking Drills', location: 'DTS Field' },
+];
+
+const DUMMY_TEAM_ANNOUNCEMENTS = [
+  { id: 'a1', text: 'Important: Team meeting after practice on Friday.', type: 'alert' },
+  { id: 'a2', text: 'New gym session schedule posted in Training Resources.', type: 'info' }, // Keep as-is for now as it's dummy text.
+];
+
+const DUMMY_TRAINING_FOCUS = 'Next Session Focus: Defensive Positioning & Set Pieces';
+
+// --- PlayerDashboard Component ---
+
+const PlayerDashboard = () => {
   const router = useRouter();
-  const playerName = "Player Name";
+
+  // Navigation functions (Player specific)
+  const handleViewMyStats = () => {
+    console.log('Navigating to Player Profile for detailed stats');
+    router.push('./../player/Profile'); // Assuming Profile page shows detailed player stats
+  };
+
+  const handleViewTeamSchedule = () => {
+    console.log('Navigating to Events (Fixtures & Training)');
+    router.push('./../player/Events'); // Events page for full schedule
+  };
+
+  const handleViewTeamMembers = () => {
+    console.log('Navigating to My Team (Roster)');
+    router.push('./../player/MyTeam');
+  };
+
+  // Renamed function
+  const handleViewTrainingSchedule = () => {
+    console.log('Navigating to Training Schedule');
+    router.push('./../player/TrainingScheduleScreen'); // Changed path to TrainingSchedule
+  };
+
+  const handleViewAllTeamNews = () => {
+    console.log('Navigating to Player News Screen');
+    router.push('./../player/News'); // Corrected path to News.tsx in the player directory
+  };
+
+  const handleGoToChatbot = () => {
+    console.log('Navigating to Chatbot');
+    router.push('./../player/Chatbot');
+  };
+
+  const handleGoToForum = () => {
+    console.log('Navigating to Forum');
+    router.push('./../player/Forum');
+  };
+
+  const handleGoToPollsVoting = () => {
+    console.log('Navigating to Polls Voting');
+    router.push('./../player/PollsVoting');
+  };
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 32 }}>
-      {/* Header */}
+    <View style={styles.container}>
+      {/* Gradient Header */}
       <LinearGradient
-        colors={['#1A5DB5', '#103A70']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
+        colors={['#4A90E2', '#283593']} // Consistent gradient
+        start={{ x: 0, y: 0.5 }}
+        end={{ x: 1, y: 0.5 }}
         style={styles.header}
       >
-        <Text style={styles.headerTitle}>🏒 Welcome, {playerName}!</Text>
-        <Text style={styles.headerSubtitle}>Your player dashboard</Text>
+        <Image
+          source={require('../../../assets/images/logo.jpeg')} // Your logo
+          style={styles.headerLogo}
+          resizeMode="contain"
+        />
+        <View style={styles.headerTextContainer}>
+          <Text style={styles.welcomeText}>Hello, {PLAYER_NAME}!</Text>
+          <Text style={styles.headerTitle}>Player Dashboard</Text>
+        </View>
+        {/* Optional: Add a profile icon or settings icon here */}
       </LinearGradient>
 
-      {/* Upcoming Games */}
-      <DashboardCard delay={0} icon="calendar-outline" title="Upcoming Games" onPress={() => router.push('/screens/supporter/Events')}>
-        <TouchableOpacity style={styles.eventRow}>
-          <View style={styles.eventContent}>
-            <Image source={require('../../../assets/images/team-A.jpg')} style={styles.logo} />
-            <Text style={styles.buttonText}>Your Team vs Opponent A – June 10</Text>
-            <Image source={require('../../../assets/images/team-A.jpg')} style={styles.logo} />
+      <ScrollView contentContainerStyle={styles.scrollViewContent}>
+
+        {/* My Performance Overview Card - Routable */}
+        <TouchableOpacity onPress={handleViewMyStats} style={styles.card}>
+          <View style={styles.cardHeader}>
+            <MaterialIcons name="person" size={24} color="#007AFF" />
+            <Text style={styles.cardTitle}>My Performance</Text>
+          </View>
+          <View style={styles.statsRow}>
+            <View style={styles.statItem}>
+              <Text style={styles.statNumber}>{DUMMY_PLAYER_STATS.goals}</Text>
+              <Text style={styles.statLabel}>Goals</Text>
+            </View>
+            <View style={styles.statItem}>
+              <Text style={styles.statNumber}>{DUMMY_PLAYER_STATS.assists}</Text>
+              <Text style={styles.statLabel}>Assists</Text>
+            </View>
+            <View style={styles.statItem}>
+              <Text style={styles.statNumber}>{DUMMY_PLAYER_STATS.gamesPlayed}</Text>
+              <Text style={styles.statLabel}>Games</Text>
+            </View>
+          </View>
+          {/* Keep the specific button for clear action, but the whole card is now tappable */}
+          <View style={styles.fullStatsButton}>
+            <Text style={styles.fullStatsButtonText}>View My Full Profile</Text>
+            <MaterialIcons name="arrow-forward-ios" size={14} color="#007AFF" />
           </View>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.eventRow}>
-          <View style={styles.eventContent}>
-            <Image source={require('../../../assets/images/team-A.jpg')} style={styles.logo} />
-            <Text style={styles.buttonText}>Your Team vs Opponent B – June 15</Text>
-            <Image source={require('../../../assets/images/team-A.jpg')} style={styles.logo} />
+
+        {/* Upcoming Events Card - Routable */}
+        <TouchableOpacity onPress={handleViewTeamSchedule} style={styles.card}>
+          <View style={styles.cardHeader}>
+            <MaterialIcons name="event" size={24} color="#FF9500" />
+            <Text style={styles.cardTitle}>Upcoming Events</Text>
+          </View>
+          {DUMMY_UPCOMING_EVENTS.map(event => (
+            <View key={event.id} style={styles.fixtureItem}>
+              <Text style={styles.fixtureDate}>{event.date}</Text>
+              <View style={styles.fixtureDetails}>
+                <Text style={styles.fixtureText}>{event.type === 'Match' ? `Match vs. ${event.opponent}` : `Training (${event.focus})`}</Text>
+                <Text style={styles.fixtureLocation}>{event.location} at {event.time}</Text>
+              </View>
+            </View>
+          ))}
+          <View style={styles.viewAllButton}>
+            <Text style={styles.viewAllButtonText}>View Full Team Schedule</Text>
+            <MaterialIcons name="chevron-right" size={20} color="#007AFF" />
           </View>
         </TouchableOpacity>
-        <Text style={styles.viewMoreText}>View all games...</Text>
-      </DashboardCard>
 
-      {/* Training Schedules */}
-      <DashboardCard delay={100} icon="barbell-outline" title="Training Schedules" onPress={() => router.push('/screens/player/TrainingScheduleScreen')}>
-        <View style={styles.scheduleItem}>
-          <Ionicons name="time-outline" size={18} color="#4F4F4F" style={styles.scheduleIcon} />
-          <Text style={styles.scheduleText}>Strength & Conditioning: Mon, Wed, Fri - 07:00 AM</Text>
-        </View>
-        <View style={styles.scheduleItem}>
-          <Ionicons name="analytics-outline" size={18} color="#4F4F4F" style={styles.scheduleIcon} />
-          <Text style={styles.scheduleText}>Skills Practice: Tue, Thu - 09:00 AM</Text>
-        </View>
-        <Text style={styles.viewMoreText}>View full schedule...</Text>
-      </DashboardCard>
-
-      {/* Practice Sessions */}
-      <DashboardCard delay={200} icon="clipboard-outline" title="Practice Sessions" onPress={() => router.push('/screens/player/PracticeSessions')}>
-        <View style={styles.scheduleItem}>
-          <Ionicons name="play-circle-outline" size={18} color="#4F4F4F" style={styles.scheduleIcon} />
-          <Text style={styles.scheduleText}>Team Drills: Today - 4:00 PM, Pitch 2</Text>
-        </View>
-        <View style={styles.scheduleItem}>
-          <Ionicons name="videocam-outline" size={18} color="#4F4F4F" style={styles.scheduleIcon} />
-          <Text style={styles.scheduleText}>Video Analysis: Tomorrow - 10:00 AM, Meeting Room</Text>
-        </View>
-        <Text style={styles.viewMoreText}>View all sessions...</Text>
-      </DashboardCard>
-
-      {/* Team News */}
-      <DashboardCard delay={300} icon="megaphone-outline" title="Team News" onPress={() => router.push('/screens/player/TeamsNews')}>
-        <Image source={require('../../../assets/images/d-news.png')} style={styles.image} />
-        <Text style={styles.cardText}>Coach announces new strategy for upcoming away game.</Text>
-        <Text style={styles.viewMoreText}>Read more team articles...</Text>
-      </DashboardCard>
-
-      {/* Featured League News */}
-      <DashboardCard delay={400} icon="newspaper-outline" title="Featured League News" onPress={() => router.push('/screens/supporter/News')}>
-        <Image source={require('../../../assets/images/d-news.png')} style={styles.image} />
-        <Text style={styles.cardText}>League Update: New transfer window rules announced.</Text>
-        <Text style={styles.viewMoreText}>View all news...</Text>
-      </DashboardCard>
-
-      {/* Poll Results */}
-      <DashboardCard delay={500} icon="stats-chart-outline" title="Top Player Poll Results" onPress={() => router.push('/screens/player/PollsVoting')}>
-        <Text style={styles.cardText}>🏆 Current Standings:</Text>
-        <View style={styles.pollRow}>
-          <Image source={require('../../../assets/icons/avatar.jpg')} style={styles.playerImage} />
-          <Text style={styles.pollText}>Alex Z.</Text>
-          <Text style={styles.pollText}>42%</Text>
-        </View>
-        <View style={styles.pollRow}>
-          <Image source={require('../../../assets/icons/avatar.jpg')} style={styles.playerImage} />
-          <Text style={styles.pollText}>Maria K. (You)</Text>
-          <Text style={styles.pollText}>35%</Text>
-        </View>
-        <View style={styles.pollRow}>
-          <Image source={require('../../../assets/icons/avatar.jpg')} style={styles.playerImage} />
-          <Text style={styles.pollText}>Sam P.</Text>
-          <Text style={styles.pollText}>23%</Text>
-        </View>
-        <Text style={styles.viewMoreText}>View full poll details...</Text>
-      </DashboardCard>
-
-      {/* Fan Forum */}
-      <DashboardCard delay={600} icon="chatbubble-ellipses-outline" title="Fan Forum" onPress={() => router.push('/screens/player/Forum')}>
-        <TouchableOpacity style={styles.button}>
-          <Text style={styles.buttonText}>Recent Discussions 💬</Text>
+        {/* My Team Card - Routable */}
+        <TouchableOpacity onPress={handleViewTeamMembers} style={styles.card}>
+          <View style={styles.cardHeader}>
+            <MaterialIcons name="groups" size={24} color="#34C759" />
+            <Text style={styles.cardTitle}>My Team</Text>
+          </View>
+          <View style={styles.teamSnapshot}>
+            <Text style={styles.teamSnapshotText}>You are part of the <Text style={{ fontWeight: 'bold' }}>{PLAYER_TEAM}</Text>.</Text>
+            <Text style={styles.teamSnapshotText}>Jersey Number: <Text style={{ fontWeight: 'bold', color: '#007AFF' }}>#{PLAYER_JERSEY_NUMBER}</Text></Text>
+          </View>
+          <View style={styles.viewAllButton}>
+            <Text style={styles.viewAllButtonText}>View Team Roster</Text>
+            <MaterialIcons name="chevron-right" size={20} color="#007AFF" />
+          </View>
         </TouchableOpacity>
-        <Text style={styles.cardTextSmall}>See what the fans are saying about the last game!</Text>
-      </DashboardCard>
 
-      {/* Ask HockeyBot */}
-      <DashboardCard delay={700} icon="extension-puzzle-outline" title="Ask our HockeyBot" onPress={() => router.push('/screens/player/PlayerChatbot')}>
-        <TouchableOpacity style={styles.button}>
-          <Text style={styles.buttonText}>Get Quick Info 🤖</Text>
+        {/* Training Schedule Card - Routable */}
+        <TouchableOpacity onPress={handleViewTrainingSchedule} style={styles.card}>
+          <View style={styles.cardHeader}>
+            <MaterialIcons name="fitness-center" size={24} color="#5856D6" />
+            <Text style={styles.cardTitle}>Training Schedule</Text>{/* Updated title */}
+          </View>
+          <View style={styles.trainingDetails}>
+            <Text style={styles.trainingText}><MaterialIcons name="accessibility" size={16} color="#333" /> {DUMMY_TRAINING_FOCUS}</Text>
+            <Text style={styles.trainingInfo}>View upcoming training sessions, drills, and fitness plans.</Text>{/* Updated text */}
+          </View>
+          <View style={styles.viewAllButton}>
+            <Text style={styles.viewAllButtonText}>View Training Schedule</Text>{/* Updated button text */}
+            <MaterialIcons name="chevron-right" size={20} color="#007AFF" />
+          </View>
         </TouchableOpacity>
-        <Text style={styles.cardTextSmall}>Ask about rules, history, or team stats.</Text>
-      </DashboardCard>
-    </ScrollView>
+
+        {/* Team Announcements Card - Routable */}
+        <TouchableOpacity onPress={handleViewAllTeamNews} style={styles.card}>
+          <View style={styles.cardHeader}>
+            <MaterialIcons name="campaign" size={24} color="#FF3B30" />
+            <Text style={styles.cardTitle}>Team Announcements</Text>
+          </View>
+          {DUMMY_TEAM_ANNOUNCEMENTS.map(announcement => (
+            <View key={announcement.id} style={styles.announcementItem}>
+              <MaterialIcons
+                name={announcement.type === 'info' ? 'info-outline' : 'warning-amber'}
+                size={20}
+                color={announcement.type === 'info' ? '#007AFF' : '#FF3B30'}
+                style={{ marginRight: 10 }}
+              />
+              <Text style={styles.announcementText}>{announcement.text}</Text>
+            </View>
+          ))}
+          <View style={styles.viewAllButton}>
+            <Text style={styles.viewAllButtonText}>View All Team News</Text>
+            <MaterialIcons name="chevron-right" size={20} color="#007AFF" />
+          </View>
+        </TouchableOpacity>
+
+        {/* Communication & Engagement Hub Card (buttons inside are already routable, so the card itself doesn't need to be wrapped) */}
+        <View style={styles.card}>
+          <View style={styles.cardHeader}>
+            <MaterialIcons name="chat" size={24} color="#FFD700" />
+            <Text style={styles.cardTitle}>Communication & Engagement</Text>
+          </View>
+          <TouchableOpacity style={styles.communicationButton} onPress={handleGoToChatbot}>
+            <MaterialIcons name="message" size={20} color="#007AFF" />
+            <Text style={styles.communicationButtonText}>AI Tactical Chatbot</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.communicationButton} onPress={handleGoToForum}>
+            <MaterialIcons name="forum" size={20} color="#007AFF" />
+            <Text style={styles.communicationButtonText}>Team Forum</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.communicationButton} onPress={handleGoToPollsVoting}>
+            <MaterialIcons name="how-to-vote" size={20} color="#007AFF" />
+            <Text style={styles.communicationButtonText}>Polls & Voting</Text>
+          </TouchableOpacity>
+        </View>
+
+      </ScrollView>
+    </View>
   );
-}
+};
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F0F4F8',
+    backgroundColor: '#f0f2f5', // Light background
   },
   header: {
-    paddingVertical: Platform.OS === 'ios' ? 40 : 32,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingTop: 50,
+    paddingBottom: 20, // More padding for gradient effect
     paddingHorizontal: 20,
-    borderBottomLeftRadius: 30,
-    borderBottomRightRadius: 30,
-    marginBottom: 20,
+    borderBottomLeftRadius: 20, // Rounded bottom corners for header
+    borderBottomRightRadius: 20,
+    overflow: 'hidden', // Ensures gradient respects border radius
+  },
+  headerLogo: {
+    width: 60,
+    height: 60,
+    marginRight: 15,
+  },
+  headerTextContainer: {
+    flex: 1,
+  },
+  welcomeText: {
+    fontSize: 16,
+    color: '#fff',
+    opacity: 0.8,
   },
   headerTitle: {
-    color: '#fff',
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: 'bold',
-    textAlign: 'center',
+    color: '#fff',
+    marginTop: 2,
   },
-  headerSubtitle: {
-    color: '#e0e0e0',
-    marginTop: 6,
-    fontSize: 16,
-    textAlign: 'center',
+  scrollViewContent: {
+    padding: 15,
+    paddingBottom: 30, // Extra padding at bottom
   },
   card: {
     backgroundColor: '#fff',
-    borderRadius: 16,
-    marginHorizontal: 16,
-    padding: 16,
-    marginBottom: 20,
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOpacity: 0.1,
-        shadowOffset: { width: 0, height: 4 },
-        shadowRadius: 10,
-      },
-      android: {
-        elevation: 5,
-      },
-    }),
+    borderRadius: 15,
+    padding: 20,
+    marginBottom: 15,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 5,
+    elevation: 8,
   },
   cardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+    paddingBottom: 10,
   },
   cardTitle: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: 'bold',
+    color: '#333',
     marginLeft: 10,
-    color: '#1A5DB5',
   },
-  image: {
-    width: '100%',
-    height: 180,
-    borderRadius: 12,
-    marginBottom: 12,
-    backgroundColor: '#e9ecef',
-  },
-  cardText: {
-    fontSize: 15,
-    color: '#343a40',
-    marginBottom: 8,
-    lineHeight: 22,
-  },
-  cardTextSmall: {
-    fontSize: 13,
-    color: '#6c757d',
-    marginTop: 8,
-  },
-  button: {
-    backgroundColor: '#E9F0FB',
-    borderColor: '#BCCFEF',
-    borderWidth: 1,
-    borderRadius: 10,
-    paddingVertical: 12,
-    paddingHorizontal: 15,
-    marginTop: 10,
-    alignItems: 'center',
+
+  // My Performance Styles (adapted from Team Overview)
+  statsRow: {
     flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginBottom: 15,
+  },
+  statItem: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  statNumber: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: '#007AFF',
+  },
+  statLabel: {
+    fontSize: 14,
+    color: '#666',
+    marginTop: 5,
+  },
+  fullStatsButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
     justifyContent: 'center',
-  },
-  buttonText: {
-    color: '#1A5DB5',
-    fontWeight: '600',
-    fontSize: 15,
-    marginLeft: 5,
-  },
-  logo: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-  },
-  eventRow: {
-    marginTop: 8,
-    backgroundColor: '#F8F9FA',
-    borderColor: '#DEE2E6',
-    borderWidth: 1,
+    paddingVertical: 10,
     borderRadius: 10,
-    padding: 10,
+    backgroundColor: '#E6F3FA', // Light blue background
   },
-  eventContent: {
+  fullStatsButtonText: {
+    color: '#007AFF',
+    fontSize: 16,
+    fontWeight: '600',
+    marginRight: 5,
+  },
+
+  // Events Styles (adapted from Fixtures)
+  fixtureItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  pollRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    marginBottom: 10,
     paddingVertical: 8,
     borderBottomWidth: 1,
-    borderBottomColor: '#e9ecef',
+    borderBottomColor: '#f5f5f5',
   },
-  pollText: {
-    fontSize: 15,
-    fontWeight: '500',
-    color: '#495057',
-    flex: 1,
-    textAlign: 'left',
-    paddingHorizontal: 5,
-  },
-  playerImage: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    marginRight: 10,
-  },
-  viewMoreText: {
-    color: '#007AFF',
+  fixtureDate: {
     fontSize: 14,
-    fontWeight: '500',
-    marginTop: 10,
-    textAlign: 'right',
+    fontWeight: 'bold',
+    color: '#333',
+    width: 80, // Fixed width for date
   },
-  scheduleItem: {
+  fixtureDetails: {
+    flex: 1,
+    marginLeft: 10,
+  },
+  fixtureText: {
+    fontSize: 16,
+    color: '#333',
+    fontWeight: '500',
+  },
+  fixtureLocation: {
+    fontSize: 13,
+    color: '#666',
+    marginTop: 2,
+  },
+  viewAllButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 8,
-    backgroundColor: '#F8F9FA',
-    borderRadius: 8,
-    marginBottom: 8,
-    paddingHorizontal: 12,
+    justifyContent: 'flex-end',
+    marginTop: 10,
+    paddingVertical: 5,
   },
-  scheduleIcon: {
-    marginRight: 10,
+  viewAllButtonText: {
+    color: '#007AFF',
+    fontSize: 14,
+    fontWeight: '600',
+    marginRight: 5,
   },
-  scheduleText: {
+
+  // Team Snapshot Styles (new)
+  teamSnapshot: {
+    marginBottom: 15,
+    alignItems: 'center',
+  },
+  teamSnapshotText: {
+    fontSize: 16,
+    color: '#333',
+    marginBottom: 5,
+  },
+
+  // Training Schedule Styles (adapted from Training Schedule)
+  trainingDetails: {
+    marginBottom: 15,
+  },
+  trainingText: {
     fontSize: 15,
-    color: '#343A40',
+    color: '#333',
+    marginBottom: 5,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  trainingInfo: {
+    fontSize: 14,
+    color: '#666',
+    fontStyle: 'italic',
+    marginTop: 10,
+  },
+
+  // Announcements Styles (reused)
+  announcementItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 10,
+    paddingVertical: 5,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f5f5f5',
+  },
+  announcementText: {
+    flex: 1,
+    fontSize: 15,
+    color: '#333',
+  },
+
+  // Communication & Engagement Hub Styles (reused and expanded)
+  communicationButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#E6F3FA',
+    paddingVertical: 12,
+    paddingHorizontal: 15,
+    borderRadius: 10,
+    marginBottom: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  communicationButtonText: {
+    fontSize: 16,
+    color: '#007AFF',
+    fontWeight: '600',
+    marginLeft: 10,
   },
 });
+
+export default PlayerDashboard;

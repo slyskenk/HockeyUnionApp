@@ -1,73 +1,34 @@
 // ../navigation/PlayerNavigator.tsx
-import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { Ionicons } from '@expo/vector-icons'; // Make sure you have @expo/vector-icons installed
-
+import React from 'react';
 import Chatbot from './Chatbot';
 import Dashboard from './Dashboard';
 import Events from './Events';
 import Forum from './Forum';
-import TrainingResources from './TrainingResources';
+import MyTeam from './MyTeam';
+import News from './News';
+import PollsVoting from './PollsVoting';
+import Profile from './Profile';
 import TrainingScheduleScreen from './TrainingScheduleScreen';
-import EditTrainingSchedulePlanScreen from './EditTrainingSchedulePlanScreen';
-import PlayerTrainingResources from './TrainingResources';
-import TeamNewsScreen from './TeamsNews';
-import MyTeamScreen from './MyTeam';
-import PlayerProfileScreen from './Profile';
-import NewsScreen from '../supporter/News';
 
 
-const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
+const Tab = createBottomTabNavigator();
 
-// Bottom Tabs (main player sections)
+// Tab Navigator (main player tabs)
 function PlayerTabs() {
   return (
-    <Tab.Navigator
-      screenOptions={({ route }) => ({
-        headerShown: false,
-        tabBarIcon: ({ focused, color, size }) => {
-          let iconName: keyof typeof Ionicons.glyphMap;
-
-          switch (route.name) {
-            case 'Dashboard':
-              iconName = focused ? 'home' : 'home-outline';
-              break;
-            case 'Forum':
-              iconName = focused ? 'chatbox' : 'chatbox-outline';
-              break;
-            case 'MyTeam':
-              iconName = focused ? 'people' : 'people-outline';
-              break;
-            case 'News':
-              iconName = focused ? 'newspaper' : 'newspaper-outline';
-              break;
-            case 'Chatbot':
-              iconName = focused ? 'chatbubble' : 'chatbubble-outline';
-              break;
-            case 'Profile':
-              iconName = focused ? 'person' : 'person-outline';
-              break;
-            default:
-              iconName = 'ellipse-outline';
-          }
-
-          return <Ionicons name={iconName} size={size} color={color} />;
-        },
-        tabBarActiveTintColor: '#007AFF',
-        tabBarInactiveTintColor: 'gray',
-      })}
-    >
+    <Tab.Navigator screenOptions={{ headerShown: true }}>
       <Tab.Screen name="Dashboard" component={Dashboard} />
+      <Tab.Screen name="Chatbot" component={Chatbot}/>
+      <Tab.Screen name="News" component={News}/>
       <Tab.Screen name="Forum" component={Forum} />
-      <Tab.Screen name="MyTeam" component={MyTeamScreen} />
-      <Tab.Screen name="News" component={NewsScreen} />
-      <Tab.Screen name="Chatbot" component={Chatbot} />
-      <Tab.Screen name="Profile" component={PlayerProfileScreen} />
-
-       
-
+      <Tab.Screen name="Events" component={Events} />
+      <Tab.Screen name="MyTeam" component={MyTeam} />
+      <Tab.Screen name="PollsVoting" component={PollsVoting} />
+      <Tab.Screen name="Profile" component={Profile} />
+      <Tab.Screen name="TrainingScheduleScreen" component={TrainingScheduleScreen} />
     </Tab.Navigator>
   );
 }
@@ -75,18 +36,17 @@ function PlayerTabs() {
 // Full Stack with tabs + extras
 export default function PlayerNavigator() {
   return (
-    <Stack.Navigator screenOptions={{ headerShown: false }}>
+    <Stack.Navigator screenOptions={{ headerShown: false }} initialRouteName="PlayerTabs">
       <Stack.Screen name="PlayerTabs" component={PlayerTabs} />
+      <Stack.Screen name="Dashboard" component={Dashboard} />
+      <Stack.Screen name="Chatbot" component={Chatbot} />
+      <Stack.Screen name="Forum" component={Forum}/>
+      <Stack.Screen name="News" component={News}/>
       <Stack.Screen name="Events" component={Events} />
-      <Stack.Screen name="TrainingResources" component={TrainingResources} />
+      <Stack.Screen name="MyTeam" component={MyTeam} />
+      <Stack.Screen name="PollsVoting" component={PollsVoting} />
+      <Stack.Screen name = "Profile" component={Profile} />
       <Stack.Screen name="TrainingScheduleScreen" component={TrainingScheduleScreen} />
-      <Stack.Screen name="EditTraininSchedulePlanScreen" component={EditTrainingSchedulePlanScreen} />
-       <Stack.Screen name="PlayerTrainingResources" component={PlayerTrainingResources} />
-        <Stack.Screen name="TeamsNews" component={TeamNewsScreen} />
-         
-
-
-       
     </Stack.Navigator>
   );
 }
