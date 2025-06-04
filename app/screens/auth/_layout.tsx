@@ -1,22 +1,21 @@
-// ../navigation/AuthNavigator.tsx
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import React from 'react';
-import Login from './Login';
-import SignUp from './SignUp';
+import { Stack } from 'expo-router';
+import { useColorScheme } from '@/hooks/useColorScheme';
+import { Colors } from '@/constants/Colors';
 
+export default function AuthLayout() {
+  const colorScheme = useColorScheme();
 
-const Stack = createNativeStackNavigator();
-const Tab = createBottomTabNavigator();
-
-
-
-// Full Stack with tabs + extras
-export default function AuthNavigator() {
   return (
-    <Stack.Navigator screenOptions={{ headerShown: false }} initialRouteName="AuthTabs">
-    <Stack.Screen name="Login" component={Login}/>
-    <Stack.Screen name="SignUp" component={SignUp}/>
-    </Stack.Navigator>
+    <Stack
+      screenOptions={{
+        headerShown: false,
+        contentStyle: { backgroundColor: Colors[colorScheme ?? 'light'].background },
+      }}
+    >
+      <Stack.Screen name="splash" />
+      <Stack.Screen name="login" />
+      <Stack.Screen name="signup" />
+    </Stack>
   );
 }
