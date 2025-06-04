@@ -1,8 +1,9 @@
-import { Entypo, MaterialCommunityIcons, MaterialIcons } from '@expo/vector-icons';
+import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
 import {
+  ActivityIndicator,
   Animated,
   Dimensions,
   Easing,
@@ -18,39 +19,68 @@ import {
   View,
 } from 'react-native';
 
+// Import Gemini API functions and ChatSession type
+import { ChatSession } from '@google/generative-ai';
+import { sendMessageInChat, startNewGeminiChatSession } from '../../../services/geminiService'; // Adjust path if needed
+
 const { width, height } = Dimensions.get('window');
 
-// --- Types ---
+// Define message types
 type Message = {
   id: string;
   text: string;
-  sender: 'user' | 'tactical_assistant';
-  timestamp: number; // Storing as Unix timestamp
+  sender: 'user' | 'assistant';
+  timestamp: number;
 };
 
-// Dummy tactical assistant avatar
-const TACTICAL_ASSISTANT_AVATAR = 'https://placehold.co/40x40/007AFF/FFFFFF?text=AI'; // Blue for tactical AI
+// Tactical assistant avatar (e.g., orange for strategy)
+const ASSISTANT_AVATAR = 'https://placehold.co/40x40/F59E0B/FFFFFF?text=AI'; // Orange for tactical AI
 
 const TacticalChatbot = () => {
   const router = useRouter();
 
-  const [messages, setMessages] = useState<Message[]>([]); // Start with empty messages
+  const [messages, setMessages] = useState<Message[]>([]);
   const [inputText, setInputText] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  const [chatSession, setChatSession] = useState<ChatSession | null>(null);
+  const [chatError, setChatError] = useState<string | null>(null);
   const flatListRef = useRef<FlatList>(null);
   const sendButtonScale = useRef(new Animated.Value(1)).current;
+
+  // --- Initialize Chat Session on Component Mount ---
+  useEffect(() => {
+    const initializeChat = async () => {
+      try {
+        // Start a new Gemini chat session specifically for 'tactical'
+        const session = await startNewGeminiChatSession('tactical');
+        setChatSession(session);
+        // Add an initial welcome message from the AI
+        setMessages([
+          {
+            id: 'welcome-ai',
+            text: "Welcome, Coach! I'm your HockeyUnion Tactical AI. Let's discuss formations, strategies, and game analysis.",
+            sender: 'assistant',
+            timestamp: Date.now(),
+          },
+        ]);
+        setChatError(null);
+      } catch (error) {
+        console.error("Failed to start Gemini chat session for tactical users:", error);
+        setChatError("Failed to connect to the Hockey AI. Please check your internet connection or API key.");
+      }
+    };
+    initializeChat();
+  }, []);
 
   // Scroll to the bottom of the chat when messages update
   useEffect(() => {
     if (flatListRef.current) {
       flatListRef.current.scrollToEnd({ animated: true });
     }
-  }, [messages]);
+  }, [messages, isTyping]);
 
   /**
    * Formats a Unix timestamp into a relative time string.
-   * @param timestamp The Unix timestamp to format.
-   * @returns Formatted time string.
    */
   const formatTimeAgo = (timestamp: number): string => {
     const seconds = Math.floor((Date.now() - timestamp) / 1000);
@@ -73,54 +103,55 @@ const TacticalChatbot = () => {
   };
 
   /**
-   * Handles sending a user message and triggering an assistant response.
+   * Handles sending a user message and getting an assistant response from Gemini.
    * @param messageText Optional text to send, used for quick prompts.
    */
   const handleSend = async (messageText?: string) => {
     const textToSend = messageText || inputText.trim();
 
-    if (textToSend) {
-      // Animate send button press
-      Animated.sequence([
-        Animated.timing(sendButtonScale, { toValue: 0.9, duration: 100, useNativeDriver: true }),
-        Animated.timing(sendButtonScale, { toValue: 1, duration: 100, useNativeDriver: true }),
-      ]).start();
+    if (!textToSend || !chatSession) {
+      return;
+    }
 
-      const newUserMessage: Message = {
-        id: `user-${Date.now()}`,
-        text: textToSend,
-        sender: 'user',
-        timestamp: Date.now(),
-      };
-      setMessages(prevMessages => [...prevMessages, newUserMessage]);
-      setInputText(''); // Clear input after sending
+    // Animate send button press
+    Animated.sequence([
+      Animated.timing(sendButtonScale, { toValue: 0.9, duration: 100, useNativeDriver: true }),
+      Animated.timing(sendButtonScale, { toValue: 1, duration: 100, useNativeDriver: true }),
+    ]).start();
 
-      // Simulate tactical assistant typing and response
-      setIsTyping(true);
-      await new Promise(resolve => setTimeout(resolve, Math.random() * 1000 + 1000)); // Simulate typing delay (1-2 seconds)
+    const userMessage: Message = {
+      id: `user-${Date.now()}`,
+      text: textToSend,
+      sender: 'user',
+      timestamp: Date.now(),
+    };
 
-      const tacticalResponses = [
-        "For a strong defense, consider a compact 4-4-2 formation. It emphasizes zonal marking and quick transitions.",
-        "To improve attacking fluidity, focus on triangle passing drills and overlapping runs from midfielders.",
-        "When facing a high press, quick one-touch passing and utilizing the width of the field can help break through.",
-        "A key to successful penalty corners is variation. Practice different routines and disguises.",
-        "Player positioning during defensive corners is crucial. Ensure strong first runners and clear roles for each player.",
-        "To enhance team cohesion, consider small-sided games that encourage constant communication and quick decision-making.",
-        "Counter-attacking effectively requires anticipation and quick releases. Drills focusing on transition from defense to attack are beneficial.",
-        "What specific formation are you interested in discussing? I can provide pros and cons.",
-        "Could you tell me more about the challenge you're facing? For example, against what type of opponent?",
-        "Remember to adapt tactics based on your players' strengths and weaknesses.",
-      ];
-      const randomResponse = tacticalResponses[Math.floor(Math.random() * tacticalResponses.length)];
+    setMessages(prevMessages => [...prevMessages, userMessage]);
+    setInputText('');
+    setIsTyping(true);
+    setChatError(null);
+
+    try {
+      const aiResponseText = await sendMessageInChat(chatSession, userMessage.text);
 
       const assistantMessage: Message = {
         id: `assistant-${Date.now() + 1}`,
-        text: randomResponse,
-        sender: 'tactical_assistant',
+        text: aiResponseText,
+        sender: 'assistant',
         timestamp: Date.now(),
       };
-      setIsTyping(false);
       setMessages(prevMessages => [...prevMessages, assistantMessage]);
+    } catch (error) {
+      console.error("Gemini API error during send (Tactical Chat):", error);
+      setChatError("Sorry, I'm having trouble connecting right now. Please try again.");
+      setMessages(prevMessages => [...prevMessages, {
+        id: `error-${Date.now()}`,
+        text: "I couldn't get a response from the AI. Please try again or check your connection.",
+        sender: 'assistant',
+        timestamp: Date.now(),
+      }]);
+    } finally {
+      setIsTyping(false);
     }
   };
 
@@ -174,15 +205,14 @@ const TacticalChatbot = () => {
 
   /**
    * Renders a single message item in the FlatList.
-   * @param item The Message object to render.
    */
   const renderMessage = ({ item }: { item: Message }) => (
     <View style={[
       styles.messageContainer,
       item.sender === 'user' ? styles.userMessageContainer : styles.assistantMessageContainer,
     ]}>
-      {item.sender === 'tactical_assistant' && (
-        <Image source={{ uri: TACTICAL_ASSISTANT_AVATAR }} style={styles.avatar} />
+      {item.sender === 'assistant' && (
+        <Image source={{ uri: ASSISTANT_AVATAR }} style={styles.avatar} />
       )}
       <View style={[
         styles.messageBubble,
@@ -202,12 +232,12 @@ const TacticalChatbot = () => {
   );
 
   const quickPrompts = [
-    "Explain 3-4-3 formation.",
-    "Drills for improving passing accuracy?",
-    "How to defend against a strong forward?",
-    "Tips for effective penalty corners?",
-    "Best way to build attack from defense?",
-    "What is zonal marking?",
+    "Explain a 4-3-3 hockey formation.",
+    "Strategies for a strong defensive press.",
+    "Drills to improve team passing patterns.",
+    "How to analyze opponent strengths and weaknesses?",
+    "Tactics for playing with a numerical disadvantage.",
+    "What are key metrics for player performance analysis?",
   ];
 
   return (
@@ -216,9 +246,9 @@ const TacticalChatbot = () => {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 60 : 0}
     >
-      {/* Gradient Header */}
+      {/* Gradient Header - Orange theme for tactical */}
       <LinearGradient
-        colors={['#4A90E2', '#283593']}
+        colors={['#F59E0B', '#C27B00']} // Tactical-centric gradient (orange tones)
         start={{ x: 0, y: 0.5 }}
         end={{ x: 1, y: 0.5 }}
         style={styles.header}
@@ -231,38 +261,51 @@ const TacticalChatbot = () => {
           style={styles.headerLogo}
           resizeMode="contain"
         />
-        <Text style={styles.headerTitle}>Tactical Assistant</Text>
+        <Text style={styles.headerTitle}>Tactical AI Coach</Text>
         <View style={styles.backButtonPlaceholder} />
       </LinearGradient>
 
-      {/* Message List */}
-      {messages.length === 0 ? (
-        <View style={styles.emptyChatContainer}>
-          <MaterialCommunityIcons name="strategy" size={100} color="#E0E0E0" />
-          <Text style={styles.emptyChatText}>Unleash your tactical brilliance!</Text>
-          <Text style={styles.emptyChatSubText}>Ask me about formations, drills, or game strategies.</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.quickPromptsContainer}>
-            {quickPrompts.map((prompt, index) => (
-              <TouchableOpacity key={index} style={styles.quickPromptButton} onPress={() => handleSend(prompt)}>
-                <Text style={styles.quickPromptText}>{prompt}</Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
+      {/* Message List / Empty State / Error State */}
+      {chatError ? (
+        <View style={styles.errorContainer}>
+          <MaterialIcons name="error-outline" size={50} color="#FF6347" />
+          <Text style={styles.errorText}>{chatError}</Text>
+          <Text style={styles.errorSubText}>Please ensure your Gemini API key is correct and you have an internet connection.</Text>
+        </View>
+      ) : messages.length === 0 && !chatSession ? (
+        <View style={styles.loadingChatContainer}>
+          <Ionicons name="chatbubbles-outline" size={80} color="#ccc" />
+          <Text style={styles.loadingChatText}>Initializing Tactical AI Coach...</Text>
+          <Text style={styles.loadingChatSubText}>This may take a moment.</Text>
+          <ActivityIndicator size="large" color="#F59E0B" style={{ marginTop: 20 }} />
         </View>
       ) : (
-        <FlatList
-          ref={flatListRef}
-          data={messages}
-          keyExtractor={(item) => item.id}
-          renderItem={renderMessage}
-          contentContainerStyle={styles.messageListContent}
-        />
+        <>
+          {messages.length === 1 && messages[0].id === 'welcome-ai' && (
+            <View style={styles.quickPromptsWrapper}>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.quickPromptsContainer}>
+                {quickPrompts.map((prompt, index) => (
+                  <TouchableOpacity key={index} style={styles.quickPromptButton} onPress={() => handleSend(prompt)}>
+                    <Text style={styles.quickPromptText}>{prompt}</Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </View>
+          )}
+          <FlatList
+            ref={flatListRef}
+            data={messages}
+            keyExtractor={(item) => item.id}
+            renderItem={renderMessage}
+            contentContainerStyle={styles.messageListContent}
+          />
+        </>
       )}
 
       {/* Assistant Typing Indicator */}
       {isTyping && (
         <View style={styles.assistantTypingRow}>
-          <Image source={{ uri: TACTICAL_ASSISTANT_AVATAR }} style={styles.avatar} />
+          <Image source={{ uri: ASSISTANT_AVATAR }} style={styles.avatar} />
           <View style={styles.assistantBubble}>
             <TypingIndicator />
           </View>
@@ -272,27 +315,27 @@ const TacticalChatbot = () => {
       {/* Input Area */}
       <View style={styles.inputContainer}>
         <TouchableOpacity style={styles.inputIcon}>
-          <Entypo name="emoji-happy" size={24} color="#888" />
+          <Ionicons name="happy-outline" size={24} color="#888" />
         </TouchableOpacity>
         <TextInput
           style={styles.textInput}
-          placeholder="Ask a tactical question..."
+          placeholder={chatSession ? "Ask about tactics..." : "Connecting to AI..."}
           placeholderTextColor="#999"
           value={inputText}
           onChangeText={setInputText}
           multiline
-          maxHeight={100}
+          editable={!!chatSession && !isTyping}
         />
         <TouchableOpacity style={styles.inputIcon}>
           <MaterialIcons name="image" size={24} color="#888" />
         </TouchableOpacity>
         <Animated.View style={{ transform: [{ scale: sendButtonScale }] }}>
           <TouchableOpacity
-            style={[styles.sendButton, inputText.trim().length === 0 && styles.sendButtonDisabled]}
-            onPress={() => handleSend()} // Call with no argument to use inputText
-            disabled={inputText.trim().length === 0}
+            style={[styles.sendButton, (!chatSession || isTyping || inputText.trim().length === 0) && styles.sendButtonDisabled]}
+            onPress={() => handleSend()}
+            disabled={!chatSession || isTyping || inputText.trim().length === 0}
           >
-            <MaterialIcons name="send" size={24} color="#fff" />
+            <Ionicons name="send" size={24} color="#fff" />
           </TouchableOpacity>
         </Animated.View>
       </View>
@@ -343,6 +386,7 @@ const styles = StyleSheet.create({
   messageListContent: {
     paddingVertical: 10,
     paddingHorizontal: 15,
+    flexGrow: 1,
   },
   messageContainer: {
     flexDirection: 'column',
@@ -379,7 +423,7 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   userBubble: {
-    backgroundColor: '#6633FF',
+    backgroundColor: '#F59E0B', // Tactical user bubble color (orange)
     borderBottomRightRadius: 5,
   },
   assistantBubble: {
@@ -430,12 +474,14 @@ const styles = StyleSheet.create({
     color: '#333',
     marginHorizontal: 8,
     maxHeight: 100,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
   },
   inputIcon: {
     padding: 5,
   },
   sendButton: {
-    backgroundColor: '#6633FF',
+    backgroundColor: '#F59E0B', // Tactical send button color (orange)
     borderRadius: 25,
     width: 45,
     height: 45,
@@ -465,14 +511,14 @@ const styles = StyleSheet.create({
     backgroundColor: '#888',
     marginHorizontal: 2,
   },
-  emptyChatContainer: {
+  loadingChatContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 20,
     paddingBottom: height * 0.1,
   },
-  emptyChatText: {
+  loadingChatText: {
     fontSize: 20,
     fontWeight: 'bold',
     color: '#666',
@@ -480,27 +526,54 @@ const styles = StyleSheet.create({
     marginTop: 20,
     lineHeight: 28,
   },
-  emptyChatSubText: {
+  loadingChatSubText: {
     fontSize: 14,
     color: '#999',
     textAlign: 'center',
     marginTop: 10,
-    marginBottom: 30,
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    backgroundColor: '#FFEEEE',
+    borderRadius: 10,
+    margin: 20,
+    padding: 20,
+  },
+  errorText: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#FF6347',
+    textAlign: 'center',
+    marginTop: 15,
+  },
+  errorSubText: {
+    fontSize: 14,
+    color: '#FF6347',
+    textAlign: 'center',
+    marginTop: 10,
+  },
+  quickPromptsWrapper: {
+    paddingHorizontal: 15,
+    paddingVertical: 10,
+    backgroundColor: '#f0f2f5',
   },
   quickPromptsContainer: {
     flexDirection: 'row',
-    justifyContent: 'center',
+    justifyContent: 'flex-start',
     alignItems: 'center',
-    paddingVertical: 10,
+    paddingBottom: 10,
   },
   quickPromptButton: {
-    backgroundColor: '#E6F3FA', // Light blue
+    backgroundColor: '#FFFBEB', // Light orange
     borderRadius: 20,
     paddingVertical: 10,
     paddingHorizontal: 15,
     marginHorizontal: 5,
     borderWidth: 1,
-    borderColor: '#007AFF',
+    borderColor: '#F59E0B',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
@@ -509,7 +582,7 @@ const styles = StyleSheet.create({
   },
   quickPromptText: {
     fontSize: 14,
-    color: '#007AFF',
+    color: '#F59E0B',
     fontWeight: '600',
   },
 });

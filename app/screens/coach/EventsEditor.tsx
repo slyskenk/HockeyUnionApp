@@ -21,10 +21,10 @@ import {
 const { width, height } = Dimensions.get('window');
 
 // Define Event Type
-type EventType = 'Practice' | 'Friendly Match' | 'Team Meeting' | 'Video Analysis' | 'Other';
+export type EventType = 'Practice' | 'Friendly Match' | 'Team Meeting' | 'Video Analysis' | 'Other'; // Exported EventType
 
 // Define Event Structure
-type TeamEvent = {
+export type TeamEvent = { // Exported TeamEvent
   id: string;
   title: string;
   description: string;
@@ -35,13 +35,13 @@ type TeamEvent = {
 };
 
 // --- Helper for formatting dates/times ---
-const formatDateForDisplay = (dateString: string): string => {
+export const formatDateForDisplay = (dateString: string): string => { // Exported
   const date = new Date(dateString);
   const options: Intl.DateTimeFormatOptions = { weekday: 'short', month: 'short', day: 'numeric' };
   return date.toLocaleDateString('en-US', options);
 };
 
-const formatTimeForDisplay = (timeString: string): string => {
+export const formatTimeForDisplay = (timeString: string): string => { // Exported
   const [hours, minutes] = timeString.split(':').map(Number);
   const date = new Date();
   date.setHours(hours, minutes);
@@ -49,7 +49,7 @@ const formatTimeForDisplay = (timeString: string): string => {
 };
 
 // --- Dummy Data (Adjusted for current date/time) ---
-const DUMMY_EVENTS: TeamEvent[] = [
+export const DUMMY_EVENTS: TeamEvent[] = [ // Changed to export
   {
     id: 'e1',
     title: 'Morning Training Session',

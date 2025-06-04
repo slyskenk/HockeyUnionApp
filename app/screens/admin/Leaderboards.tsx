@@ -337,7 +337,8 @@ const Leaderboards = () => {
           resizeMode="contain"
         />
         <Text style={styles.headerTitle}>Leaderboard Manager</Text>
-        <View style={styles.backButtonPlaceholder} />
+        {/* The backButtonPlaceholder is no longer needed if the logo takes its space */}
+        {/* <View style={styles.backButtonPlaceholder} /> */}
       </LinearGradient>
 
       {/* Category Selector */}
@@ -569,6 +570,7 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between', // Distribute items evenly
     paddingTop: 50,
     paddingBottom: 20,
     paddingHorizontal: 15,
@@ -583,25 +585,27 @@ const styles = StyleSheet.create({
   },
   backButton: {
     padding: 5,
-    marginRight: 10,
-  },
-  backButtonPlaceholder: {
-    width: 24 + 10,
-    height: 24,
+    // No need for marginRight here, flex will handle spacing
   },
   headerLogo: {
     width: 40,
     height: 40,
-    marginRight: 10,
+    // Add margin to separate from title, adjust as needed
+    marginHorizontal: 10,
   },
   headerTitle: {
     fontSize: 22,
     fontWeight: 'bold',
     color: '#fff',
-    flex: 1,
-    textAlign: 'center',
-    marginLeft: -40,
+    flex: 1, // Allows title to take up remaining space
+    textAlign: 'center', // Center the title within its flexible space
+    // Remove fixed negative margin, adjust marginHorizontal for logo/backButton
   },
+  // This placeholder is no longer needed because the logo takes its spot
+  // backButtonPlaceholder: {
+  //   width: 24 + 10,
+  //   height: 24,
+  // },
   categorySelectorContainer: {
     paddingVertical: 10,
     paddingHorizontal: 10,
@@ -720,7 +724,6 @@ const styles = StyleSheet.create({
   },
   actionButton: {
     padding: 8,
-    // Removed marginLeft from here to let justifyContent handle spacing
   },
   deleteButton: {
     // Specific styling for delete if needed

@@ -1,234 +1,267 @@
-import React, { useEffect, useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  FlatList,
-  Image,
-  TouchableOpacity,
-  ActivityIndicator,
-} from 'react-native';
-import YoutubePlayer from 'react-native-youtube-iframe';
-import { MaterialIcons as Icon } from '@expo/vector-icons';
-import SearchBar from '../../../components/SearchBar';
-import { router } from 'expo-router';
-import localNews from './news/news.json'; // ✅ import the JSON
+// app/screens/supporter/News.tsx
 
+import { MaterialIcons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useRouter } from 'expo-router';
+import React from 'react';
+import {
+  Dimensions,
+  Image,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
+
+const { width } = Dimensions.get('window');
+
+// --- Types ---
 type NewsItem = {
   id: string;
   title: string;
   content: string;
-  imageUrl?: string;
-  videoUrl?: string;
-  mediaType: 'image' | 'video';
-  timestamp: number;
+  imageUrl?: string | null;
+  author: string;
+  publishDate: number; // Unix timestamp
 };
 
-const getYouTubeId = (url: string) => {
-  const match = url.match(/(?:youtube\.com\/.*v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
-  return match ? match[1] : '';
+// --- Helper for formatting dates ---
+const formatDateForDisplay = (timestamp: number): string => {
+  const date = new Date(timestamp);
+  return date.toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
 };
 
-const VideoCard = ({ item }: { item: NewsItem }) => {
-  const videoId = getYouTubeId(item.videoUrl!);
+// --- Dummy News Data (Fan-Centric) ---
+// Dates are set relative to the current time (June 3, 2025, 5:37 PM CAT) for relevance.
+const DUMMY_FAN_NEWS_DATA: NewsItem[] = [
+  {
+    id: 'fn1',
+    title: 'Scorpions Dominate Rivals in Thrilling Match!',
+    content: 'Our beloved Desert Scorpions delivered a spectacular performance last night, securing a decisive victory against our fierce rivals, the Oryx Chargers. The atmosphere was electric! Read the full match report and see highlights.',
+    imageUrl: 'https://picsum.photos/seed/fanmatch/700/400',
+    author: 'Club Reporter',
+    publishDate: new Date('2025-06-03T10:00:00Z').getTime(), // Published today
+  },
+  {
+    id: 'fn2',
+    title: 'Fan Zone Festivities Announced for Next Home Game!',
+    content: 'Get ready for an unforgettable fan experience! Our next home game on June 8th will feature enhanced Fan Zone activities, including player autographs, mascot appearances, and exciting giveaways. Arrive early!',
+    imageUrl: 'https://picsum.photos/seed/fanzone/700/400',
+    author: 'Fan Engagement Team',
+    publishDate: new Date('2025-06-02T15:30:00Z').getTime(), // 1 day ago
+  },
+  {
+    id: 'fn3',
+    title: 'Youth Hockey Program Sees Record Sign-Ups!',
+    content: 'The future of hockey is bright! We\'re thrilled to announce a record number of participants in our youth development program. Thanks to all the parents and volunteers for their incredible support.',
+    imageUrl: 'https://picsum.photos/seed/youthhockey/700/400',
+    author: 'Community Outreach',
+    publishDate: new Date('2025-05-30T09:00:00Z').getTime(), // 4 days ago
+  },
+  {
+    id: 'fn4',
+    title: 'New Merch Drop: Limited Edition Playoff Gear!',
+    content: 'Show your team pride with our brand-new limited edition playoff merchandise! Jerseys, scarves, and hats are now available in the official club store. Don\'t miss out!',
+    imageUrl: 'https://picsum.photos/seed/newmerch/700/400',
+    author: 'Merchandise Dept.',
+    publishDate: new Date('2025-05-28T11:00:00Z').getTime(), // 6 days ago
+  },
+  {
+    id: 'fn5',
+    title: 'Coach Discusses Team Strategy After Recent Win',
+    content: 'Our head coach shares insights into the team\'s recent success and outlines the strategic focus for the upcoming challenges. A must-read for true hockey strategists!',
+    imageUrl: null, // No image for this one
+    author: 'Media Team',
+    publishDate: new Date('2025-05-25T14:00:00Z').getTime(), // 9 days ago
+  },
+];
 
-  return (
-    <View style={{ marginRight: 16, width: 260 }}>
-      <YoutubePlayer
-        height={140}
-        width={260}
-        videoId={videoId}
-        play={false}
-        webViewStyle={{ borderRadius: 10 }}
-        onFullScreenChange={isFullscreen => console.log('Fullscreen:', isFullscreen)}
-      />
-      <Text style={styles.topNewsTitle}>{item.title}</Text>
-    </View>
-  );
-};
+const SupporterNewsScreen = () => {
+  const router = useRouter();
 
-const NewsScreen = () => {
-  const [queryText, setQueryText] = useState('');
-  const [news, setNews] = useState<NewsItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [bookmarkedIds, setBookmarkedIds] = useState<string[]>([]);
-
-  useEffect(() => {
-    const fetchLocalNews = async () => {
-      try {
-        setNews(localNews as NewsItem[]); // ✅ cast JSON as NewsItem[]
-      } catch (error) {
-        console.error('Error loading local news:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchLocalNews();
-  }, []);
-
-  const filteredNews = news.filter(item =>
-    item.title.toLowerCase().includes(queryText.toLowerCase())
-  );
-
-  const videoNews = filteredNews.filter(item => item.mediaType === 'video');
-  const imageNews = filteredNews.filter(item => item.mediaType === 'image');
-
-  const toggleBookmark = (id: string) => {
-    setBookmarkedIds(prev =>
-      prev.includes(id) ? prev.filter(bid => bid !== id) : [...prev, id]
-    );
-  };
-
-  const isBookmarked = (id: string) => bookmarkedIds.includes(id);
-
-  const renderImageItem = ({ item }: { item: NewsItem }) => (
-    <View style={styles.card}>
-      <TouchableOpacity
-        onPress={() =>
-          router.push({
-            pathname: '/screens/supporter/news/article',
-            params: {
-              title: item.title,
-              content: item.content,
-              imageUrl: item.imageUrl,
-            },
-          })
-        }
-      >
-        <Image source={{ uri: item.imageUrl! }} style={styles.cardImage} />
-      </TouchableOpacity>
-      <View style={styles.cardContent}>
-        <Text style={styles.cardTitle}>{item.title}</Text>
-        <TouchableOpacity onPress={() => toggleBookmark(item.id)}>
-          <Icon
-            name={isBookmarked(item.id) ? 'bookmark' : 'bookmark-border'}
-            size={24}
-            color={isBookmarked(item.id) ? '#003366' : '#555'}
-          />
-        </TouchableOpacity>
-      </View>
-    </View>
-  );
-
-  if (loading) {
-    return (
-      <View style={styles.loader}>
-        <ActivityIndicator size="large" color="#003366" />
-      </View>
-    );
-  }
+  // Sort by publishDate in descending order (most recent first).
+  const sortedNewsItems = [...DUMMY_FAN_NEWS_DATA].sort((a, b) => b.publishDate - a.publishDate);
 
   return (
     <View style={styles.container}>
-      <FlatList
-        data={imageNews}
-        keyExtractor={item => item.id}
-        renderItem={renderImageItem}
-        ListHeaderComponent={
-          <>
-            <SearchBar query={queryText} onChangeText={setQueryText} profilePic={null} />
-            <Text style={styles.sectionTitle}>Top Videos</Text>
-            <View style={{ height: 40}} /> 
-            <FlatList
-              data={videoNews}
-              keyExtractor={item => item.id}
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              renderItem={({ item }) => <VideoCard item={item} />}
-              contentContainerStyle={{ paddingHorizontal: 16 }}
-            />
-            <View style={{ height: 24 }} />
-            <Text style={styles.sectionTitle}>News Articles</Text>
-            <View style={{ height: 16 }} />
-          </>
-        }
-        contentContainerStyle={styles.list}
-        showsVerticalScrollIndicator={false}
-      />
-
-      <TouchableOpacity
-        style={styles.floatingBookmark}
-        onPress={() =>
-          router.push({
-            pathname: '/screens/supporter/news/BookmarksScreen',
-            params: { ids: JSON.stringify(bookmarkedIds) },
-          })
-        }
+      {/* Gradient Header - Matches Supporter Dashboard Theme */}
+      <LinearGradient
+        colors={['#FF6F61', '#E63946']} // Warm, energetic colors from Supporter Dashboard
+        start={{ x: 0, y: 0.5 }}
+        end={{ x: 1, y: 0.5 }}
+        style={styles.header}
       >
-        <Icon name="bookmark" size={38} color="#003366" />
-      </TouchableOpacity>
+        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+          <MaterialIcons name="arrow-back" size={24} color="#fff" />
+        </TouchableOpacity>
+        <Image
+          source={require('../../../assets/images/logo.jpeg')}
+          style={styles.headerLogo}
+          resizeMode="contain"
+        />
+        <Text style={styles.headerTitle}>Team News & Fan Updates</Text> {/* Fan-centric title */}
+        <View style={styles.backButtonPlaceholder} />
+      </LinearGradient>
+
+      {/* News List */}
+      {sortedNewsItems.length === 0 ? (
+        <View style={styles.emptyStateContainer}>
+          <MaterialIcons name="campaign" size={100} color="#E0E0E0" />
+          <Text style={styles.emptyStateText}>No fan news yet!</Text>
+          <Text style={styles.emptyStateSubText}>Stay tuned for exciting updates and announcements.</Text>
+        </View>
+      ) : (
+        <ScrollView contentContainerStyle={styles.scrollViewContent}>
+          {sortedNewsItems.map((item) => (
+            <View key={item.id} style={styles.newsCard}>
+              {item.imageUrl && (
+                <Image source={{ uri: item.imageUrl }} style={styles.newsImage} />
+              )}
+              <View style={styles.newsContent}>
+                <Text style={styles.newsTitle}>{item.title}</Text>
+                <Text style={styles.newsFullContent}>{item.content}</Text>
+                <View style={styles.newsFooter}>
+                  <Text style={styles.newsDate}>
+                    <MaterialIcons name="calendar-today" size={12} color="#999" /> {formatDateForDisplay(item.publishDate)}
+                  </Text>
+                  <Text style={styles.newsAuthor}>
+                    <MaterialIcons name="person" size={12} color="#999" /> By {item.author}
+                  </Text>
+                </View>
+              </View>
+            </View>
+          ))}
+        </ScrollView>
+      )}
     </View>
   );
 };
-
-export default NewsScreen;
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F4F6F9',
+    backgroundColor: '#f0f2f5',
   },
-  list: {
-    paddingHorizontal: 16,
-    paddingBottom: 24,
-  },
-  sectionTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#222',
-    marginHorizontal: 16,
-    marginTop: 16,
-  },
-  topNewsTitle: {
-    width: 260,
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#333',
-    marginTop: 6,
-  },
-  card: {
-    marginBottom: 20,
-    borderRadius: 10,
-    overflow: 'hidden',
-    backgroundColor: '#fff',
-    elevation: 2,
-  },
-  cardImage: {
-    width: '100%',
-    height: 180,
-    resizeMode: 'cover',
-    backgroundColor: '#eee',
-  },
-  cardContent: {
+  header: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 12,
-  },
-  cardTitle: {
-    flex: 1,
-    fontSize: 16,
-    fontWeight: '500',
-    color: '#333',
-    paddingRight: 8,
-  },
-  floatingBookmark: {
-    position: 'absolute',
-    top: 295,
-    right: 16,
-    backgroundColor: '#fff',
-    borderRadius: 30,
-    padding: 4,
-    elevation: 4,
+    paddingTop: 50,
+    paddingBottom: 20,
+    paddingHorizontal: 15,
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
+    overflow: 'hidden',
     shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.2,
-    shadowRadius: 3,
-    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 5,
+    elevation: 8,
   },
-  loader: {
+  backButton: {
+    padding: 5,
+    marginRight: 10,
+  },
+  backButtonPlaceholder: {
+    width: 24 + 10,
+    height: 24,
+  },
+  headerLogo: {
+    width: 40,
+    height: 40,
+    marginRight: 10,
+  },
+  headerTitle: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: '#fff',
+    flex: 1,
+    textAlign: 'center',
+    marginLeft: -40,
+  },
+  scrollViewContent: {
+    padding: 15,
+    paddingBottom: 20,
+  },
+  emptyStateContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    padding: 20,
+    minHeight: width * 0.8,
+  },
+  emptyStateText: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#666',
+    textAlign: 'center',
+    marginTop: 20,
+  },
+  emptyStateSubText: {
+    fontSize: 14,
+    color: '#999',
+    textAlign: 'center',
+    marginTop: 5,
+  },
+  newsCard: {
+    backgroundColor: '#fff',
+    borderRadius: 15,
+    marginBottom: 15,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 5,
+    elevation: 8,
+    overflow: 'hidden',
+  },
+  newsImage: {
+    width: '100%',
+    height: width * 0.5,
+    backgroundColor: '#eee',
+    borderTopLeftRadius: 15,
+    borderTopRightRadius: 15,
+  },
+  newsContent: {
+    padding: 15,
+  },
+  newsTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 10,
+  },
+  newsFullContent: {
+    fontSize: 16,
+    color: '#555',
+    lineHeight: 24,
+    marginBottom: 15,
+  },
+  newsFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: '#f0f0f0',
+  },
+  newsDate: {
+    fontSize: 13,
+    color: '#999',
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  newsAuthor: {
+    fontSize: 13,
+    color: '#999',
+    flexDirection: 'row',
+    alignItems: 'center',
   },
 });
+
+export default SupporterNewsScreen;

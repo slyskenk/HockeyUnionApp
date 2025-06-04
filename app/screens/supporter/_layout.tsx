@@ -1,106 +1,53 @@
+// ../navigation/PlayerNavigator.tsx
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { createNativeStackNavigator } from '@react-navigation/native-stack'; // Added this import
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import React from 'react';
-import { Image, StyleSheet } from 'react-native';
-
-// Import your screen components
-import BookmarksScreen from '../supporter/news/BookmarksScreen';
-import ArticlePage from '../supporter/news/article';
 import Dashboard from './Dashboard';
 import Events from './Events';
-import Fanchat from './FanChatbot'; // Assuming this is the correct component name for FanChat
+import FanChatbot from './FanChatbot';
 import Forum from './Forum';
+import Leaderboard from './Leaderboard';
 import MerchStore from './MerchStore';
 import News from './News';
-import PollingStationApp from './PollsVoting';
+import PollsVoting from './PollsVoting';
 import Teams from './Teams';
 
-const Tab = createBottomTabNavigator();
+
+
 const Stack = createNativeStackNavigator();
+const Tab = createBottomTabNavigator();
 
-// Icon definitions for the tab bar
-const icons = {
-  Dashboard: require('../../../assets/icons/home.png'),
-  News: require('../../../assets/icons/megaphone.png'), // Matched key to screen name "News"
-  Forum: require('../../../assets/icons/live-chat.png'),
-  FanChat: require('../../../assets/icons/bot.png'), // Matched key to screen name "FanChat"
-  MerchStore: require('../../../assets/icons/shopping-cart.png'),
-};
-
-// Styles for the tab bar icons
-const styles = StyleSheet.create({
-  icon: {
-    width: 30,
-    height: 28,
-    resizeMode: 'contain',
-  },
-});
-
-// Tab Navigator for the main supporter sections
-function SupporterTabs() {
+// Tab Navigator (main player tabs)
+function SupportersTabs() {
   return (
-    <Tab.Navigator
-      screenOptions={({ route }) => ({
-        tabBarIcon: ({ focused }) => {
-          // Ensure the route name exists as a key in the icons object
-          const iconName = route.name as keyof typeof icons;
-          const icon = icons[iconName];
-          return (
-            <Image
-              source={icon}
-              style={[
-                styles.icon,
-                { tintColor: focused ? '#007bff' : 'black' }
-              ]}
-            />
-          );
-        },
-        tabBarShowLabel: true,
-        tabBarLabelStyle: {
-          fontSize: 12,
-          fontWeight: '600',
-        },
-        tabBarActiveTintColor: '#007bff',
-        tabBarInactiveTintColor: 'black',
-        headerShown: false, // As per your original supporter tab navigator
-      })}
-    >
-      <Tab.Screen name="Dashboard" component={Dashboard} options={{ tabBarLabel: 'Home' }} />
-      <Tab.Screen name="News" component={News} options={{ tabBarLabel: 'News' }} />
-      <Tab.Screen name="Forum" component={Forum} options={{ tabBarLabel: 'Forum' }} />
-      <Tab.Screen name="FanChat" component={Fanchat} options={{ tabBarLabel: 'Chat' }} />
-      <Tab.Screen name="MerchStore" component={MerchStore} options={{ tabBarLabel: 'Store' }} />
+    <Tab.Navigator screenOptions={{ headerShown: true }}>
+      <Tab.Screen name="Dashboard" component={Dashboard} />
+      <Tab.Screen name="FanChatbot" component={FanChatbot}/>
+      <Tab.Screen name="News" component={News}/>
+      <Tab.Screen name="Forum" component={Forum} />
+      <Tab.Screen name="Events" component={Events} />
+      <Tab.Screen name="MerchStore" component={MerchStore} />
+      <Tab.Screen name="PollsVoting" component={PollsVoting} />
+      <Tab.Screen name="Teams" component={Teams} />
+      <Tab.Screen name="Leaderboard" component={Leaderboard}/>
     </Tab.Navigator>
   );
 }
 
-// Main Stack Navigator for the Supporter section
-export default function SupporterNavigator() {
+// Full Stack with tabs + extras
+export default function SupportersNavigator() {
   return (
-    <Stack.Navigator 
-      screenOptions={{ headerShown: false }} 
-      initialRouteName="SupporterMainTabs" // Changed to a more descriptive initial route
-    >
-      {/* The Tab Navigator is a screen in the Stack Navigator */}
-      <Stack.Screen 
-        name="SupporterMainTabs" 
-        component={SupporterTabs} 
-        // options={{ headerShown: false }} // Redundant if stack screenOptions.headerShown is false
-      />
-
-      {/* Screens also accessible via Tabs (for direct stack navigation if needed) */}
+    <Stack.Navigator screenOptions={{ headerShown: false }} initialRouteName="SupportersTabs">
+      <Stack.Screen name="SupportersTabs" component={SupportersTabs} />
       <Stack.Screen name="Dashboard" component={Dashboard} />
-      <Stack.Screen name="News" component={News} />
-      <Stack.Screen name="Forum" component={Forum} />
-      <Stack.Screen name="FanChat" component={Fanchat} /> 
-      <Stack.Screen name="MerchStore" component={MerchStore} />
-
-      {/* Screens outside the tabs */}
+      <Stack.Screen name="FanChatbot" component={FanChatbot} />
+      <Stack.Screen name="Forum" component={Forum}/>
+      <Stack.Screen name="News" component={News}/>
       <Stack.Screen name="Events" component={Events} />
-      <Stack.Screen name="Teams" component={Teams} />
-      <Stack.Screen name="Bookmarks" component={BookmarksScreen} />
-      <Stack.Screen name="Article" component={ArticlePage} />
-      <Stack.Screen name="PollingStation" component={PollingStationApp} />
+      <Stack.Screen name="MerchStore" component={MerchStore} />
+      <Stack.Screen name="PollsVoting" component={PollsVoting} />
+      <Stack.Screen name = "Teams" component={Teams} />
+      <Stack.Screen name="Leaderboard" component={Leaderboard} />
     </Stack.Navigator>
   );
 }
