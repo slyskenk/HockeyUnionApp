@@ -128,10 +128,7 @@ const PlayerDashboard = () => {
           style={styles.headerLogo}
           resizeMode="contain"
         />
-        <View style={styles.headerTextContainer}>
-          <Text style={styles.welcomeText}>Hello, {PLAYER_NAME}!</Text>
-          <Text style={styles.headerTitle}>Player Dashboard</Text>
-        </View>
+    
 
         {/* Role Selector Toggle */}
         <TouchableOpacity
