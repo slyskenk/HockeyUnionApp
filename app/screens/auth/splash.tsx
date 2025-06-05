@@ -1,4 +1,3 @@
-import { useRouter } from 'expo-router';
 import React, { useEffect, useRef } from 'react';
 import {
   ActivityIndicator,
@@ -6,21 +5,20 @@ import {
   StyleSheet,
   View,
   Text,
-  Image,
 } from 'react-native';
 import LottieView from 'lottie-react-native';
+import { useRouter } from 'expo-router';
 
 export default function SplashScreen() {
   const router = useRouter();
 
-  // Animated values
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const textAnim = useRef(new Animated.Value(0)).current;
   const logoAnim = useRef(new Animated.Value(0)).current;
   const logoBounce = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    // Animate logo with fade and bounce
+    // Start animations
     Animated.sequence([
       Animated.parallel([
         Animated.timing(logoAnim, {
@@ -50,16 +48,16 @@ export default function SplashScreen() {
       ]),
     ]).start();
 
-    const timer = setTimeout(() => {
-      router.push('LoginScreen');
-    }, 3500);
+    // Navigate to login after a short delay (e.g., 3 seconds)
+    const timeout = setTimeout(() => {
+      router.replace('/screens/auth/login');
+    }, 3000);
 
-    return () => clearTimeout(timer);
-  }, [router]);
+    return () => clearTimeout(timeout);
+  }, []);
 
   return (
     <View style={styles.container}>
-      {/* Animated logo */}
       <Animated.Image
         source={require('../../../assets/images/logo.jpeg')}
         style={[
@@ -70,7 +68,7 @@ export default function SplashScreen() {
               {
                 translateY: logoBounce.interpolate({
                   inputRange: [0, 1],
-                  outputRange: [-50, 0], // bounce effect
+                  outputRange: [-50, 0],
                 }),
               },
             ],
@@ -79,7 +77,6 @@ export default function SplashScreen() {
         resizeMode="contain"
       />
 
-      {/* Animated Lottie animation */}
       <Animated.View style={{ opacity: fadeAnim }}>
         <LottieView
           source={require('../../../components/Skipping-man.json')}
@@ -89,12 +86,10 @@ export default function SplashScreen() {
         />
       </Animated.View>
 
-      {/* Animated app title */}
       <Animated.Text style={[styles.title, { opacity: textAnim }]}>
         Hockey Union
       </Animated.Text>
 
-      {/* Loading spinner */}
       <ActivityIndicator size="large" color="#007AFF" style={{ marginTop: 20 }} />
     </View>
   );

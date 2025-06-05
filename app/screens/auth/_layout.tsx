@@ -13,7 +13,7 @@ export default function AuthLayout() {
         contentStyle: { backgroundColor: Colors[colorScheme ?? 'light'].background },
       }}
     >
-      <Stack.Screen name="splash" />
+      <Stack.Screen name="index" />
       <Stack.Screen name="login" />
       <Stack.Screen name="signup" />
     </Stack>

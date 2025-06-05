@@ -1,39 +1,48 @@
 import { MaterialCommunityIcons, MaterialIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import React, { useState } from 'react';
-import { Dimensions, Image, Modal, Pressable, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import {
+  Dimensions,
+  Image,
+  Modal,
+  Pressable,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+  ActivityIndicator,
+} from 'react-native';
+import { auth, db } from '../../../firebase/firebase'; // ✅ Adjust path if needed
+import { doc, getDoc } from 'firebase/firestore';
+import { onAuthStateChanged } from 'firebase/auth';
 
-const { width } = Dimensions.get('window'); // Corrected line
+const { width } = Dimensions.get('window');
 const screenPaddingHorizontal = 20;
 const numColumns = 3;
 const itemGap = 10;
 
-const availableWidthForGrid = width - (2 * screenPaddingHorizontal);
-const itemSize = (availableWidthForGrid - ((numColumns + 1) * itemGap)) / numColumns;
+const availableWidthForGrid = width - 2 * screenPaddingHorizontal;
+const itemSize = (availableWidthForGrid - (numColumns + 1) * itemGap) / numColumns;
 
-// Define the interface for a dashboard role
 interface DashboardRole {
   label: string;
   route: string;
 }
 
-// Define the available dashboard roles and their corresponding routes
-const DASHBOARD_ROLES: DashboardRole[] = [ // Added type annotation
+const DASHBOARD_ROLES: DashboardRole[] = [
   { label: 'Admin Dashboard', route: './../admin/Dashboard' },
-  { label: 'Supporter Dashboard', route: './../supporter/Dashboard' }, // Assuming this path exists
-  { label: 'Player Dashboard', route: './../player/Dashboard' },     // Assuming this path exists
-  { label: 'Coach Dashboard', route: './../coach/Dashboard' },       // Assuming this path exists
+  { label: 'Supporter Dashboard', route: './../supporter/Dashboard' },
+  { label: 'Player Dashboard', route: './../player/Dashboard' },
+  { label: 'Coach Dashboard', route: './../coach/Dashboard' },
 ];
 
-// Define the interface for DashboardTab props
 interface DashboardTabProps {
-  iconName: React.ComponentProps<typeof MaterialCommunityIcons>['name']; // More specific type
+  iconName: React.ComponentProps<typeof MaterialCommunityIcons>['name'];
   label: string;
   onPress: () => void;
 }
 
-// Reusable component for a single dashboard tab
-const DashboardTab = ({ iconName, label, onPress }: DashboardTabProps) => ( // Added type annotation
+const DashboardTab = ({ iconName, label, onPress }: DashboardTabProps) => (
   <TouchableOpacity style={styles.tabButton} onPress={onPress}>
     <MaterialCommunityIcons name={iconName} size={itemSize * 0.4} color="#555" />
     <Text style={styles.tabLabel}>{label}</Text>
@@ -43,9 +52,38 @@ const DashboardTab = ({ iconName, label, onPress }: DashboardTabProps) => ( // A
 const DashboardScreen = () => {
   const router = useRouter();
   const [showRoleSelector, setShowRoleSelector] = useState(false);
-  const [currentRole, setCurrentRole] = useState<DashboardRole>( // Added type annotation
-    DASHBOARD_ROLES.find(role => role.label === 'Admin Dashboard') || DASHBOARD_ROLES[0]
-  ); // Default to Admin Dashboard, explicitly finding it
+  const [currentRole, setCurrentRole] = useState<DashboardRole>(
+    DASHBOARD_ROLES.find((role) => role.label === 'Admin Dashboard') || DASHBOARD_ROLES[0]
+  );
+  const [adminName, setAdminName] = useState<string>('');
+  const [loadingName, setLoadingName] = useState(true); // ✅ Spinner state
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        try {
+          const docRef = doc(db, 'users', user.uid);
+          const userDoc = await getDoc(docRef);
+          if (userDoc.exists()) {
+            const data = userDoc.data();
+            setAdminName(data.name || 'Admin');
+          } else {
+            setAdminName('Admin');
+          }
+        } catch (error) {
+          console.error('Error fetching user data:', error);
+          setAdminName('Admin');
+        } finally {
+          setLoadingName(false);
+        }
+      } else {
+        setAdminName('');
+        setLoadingName(false);
+      }
+    });
+
+    return unsubscribe;
+  }, []);
 
   const tabsData = [
     { iconName: 'robot-outline', label: 'Chatbot', onPress: () => router.push('./../admin/ChatbotManager') },
@@ -60,64 +98,45 @@ const DashboardScreen = () => {
     { iconName: 'trophy-outline', label: 'Leaderboards', onPress: () => router.push('./../admin/Leaderboards') },
   ];
 
-  const handleRoleChange = (role: DashboardRole) => { // Added type annotation
+  const handleRoleChange = (role: DashboardRole) => {
     setCurrentRole(role);
     setShowRoleSelector(false);
-    router.push(role.route); // Navigate to the selected dashboard
+    router.push(role.route);
   };
 
   return (
     <View style={styles.rootContainer}>
       {/* Header Area */}
       <View style={styles.header}>
-        {/* Namibia Hockey Union Logo */}
-        <Image
-          source={require('./../../../assets/images/logo.jpeg')}
-          style={styles.logo}
-          resizeMode="contain"
-        />
-
-        {/* Role Selector Toggle */}
-        <TouchableOpacity
-          style={styles.roleSelectorToggle}
-          onPress={() => setShowRoleSelector(true)}
-        >
+        <Image source={require('../../../assets/images/logo.jpeg')} style={styles.logo} resizeMode="contain" />
+        <TouchableOpacity style={styles.roleSelectorToggle} onPress={() => setShowRoleSelector(true)}>
           <Text style={styles.currentRoleText}>{currentRole.label}</Text>
           <MaterialIcons name="arrow-drop-down" size={24} color="#555" />
         </TouchableOpacity>
       </View>
 
-      {/* Welcome Admin Text */}
+      {/* Welcome Text */}
       <Text style={styles.welcomeText}>Welcome Admin</Text>
-      <Text style={styles.adminName}>SLYSKEN KAKUVA</Text>
+
+      {loadingName ? (
+        <ActivityIndicator size="small" color="#333" style={{ marginBottom: 30 }} />
+      ) : (
+        <Text style={styles.adminName}>{adminName}</Text>
+      )}
 
       {/* Grid of Tabs */}
       <View style={styles.tabsGrid}>
         {tabsData.map((tab, index) => (
-          <DashboardTab
-            key={index}
-            iconName={tab.iconName}
-            label={tab.label}
-            onPress={tab.onPress}
-          />
+          <DashboardTab key={index} iconName={tab.iconName} label={tab.label} onPress={tab.onPress} />
         ))}
       </View>
 
       {/* Role Selection Modal */}
-      <Modal
-        animationType="fade"
-        transparent={true}
-        visible={showRoleSelector}
-        onRequestClose={() => setShowRoleSelector(false)}
-      >
+      <Modal animationType="fade" transparent={true} visible={showRoleSelector} onRequestClose={() => setShowRoleSelector(false)}>
         <Pressable style={styles.modalOverlay} onPress={() => setShowRoleSelector(false)}>
           <View style={styles.modalContent}>
             {DASHBOARD_ROLES.map((role, index) => (
-              <TouchableOpacity
-                key={index}
-                style={styles.modalRoleOption}
-                onPress={() => handleRoleChange(role)}
-              >
+              <TouchableOpacity key={index} style={styles.modalRoleOption} onPress={() => handleRoleChange(role)}>
                 <Text style={styles.modalRoleText}>{role.label}</Text>
               </TouchableOpacity>
             ))}
@@ -171,7 +190,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#555',
     marginBottom: 5,
-    textAlign: 'center', // Centered these based on your previous request
+    textAlign: 'center',
     width: '100%',
   },
   adminName: {
@@ -180,7 +199,7 @@ const styles = StyleSheet.create({
     color: '#000',
     marginBottom: 30,
     textTransform: 'uppercase',
-    textAlign: 'center', // Centered these based on your previous request
+    textAlign: 'center',
     width: '100%',
   },
   tabsGrid: {

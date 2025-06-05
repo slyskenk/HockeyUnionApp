@@ -12,11 +12,10 @@ import { Picker } from '@react-native-picker/picker';
 import SocialButtons from '../../../components/SocialButton';
 import { useRouter } from 'expo-router';
 
-
 // 🔥 Firebase
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { doc, setDoc } from 'firebase/firestore';
-import { auth, db } from '../../../firebase/firebase'; // make sure these are correctly set up
+import { auth, db } from '../../../firebase/firebase';
 
 export default function SignupScreen() {
   const router = useRouter();
@@ -37,11 +36,9 @@ export default function SignupScreen() {
     setLoading(true);
 
     try {
-      // 🔥 Create user
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
 
-      // 🔥 Save user profile in Firestore
       await setDoc(doc(db, 'users', user.uid), {
         uid: user.uid,
         name,
@@ -51,7 +48,24 @@ export default function SignupScreen() {
       });
 
       Alert.alert('Success', `Account created for ${email} as ${userType}`);
-      router.push('/screens/auth/LoginScreen');
+
+      // ✅ Redirect to the correct dashboard
+      switch (userType) {
+        case 'Player':
+          router.replace('/screens/player/Dashboard');
+          break;
+        case 'Coach':
+          router.replace('/screens/coach/Dashboard');
+          break;
+        case 'Admin':
+          router.replace('/screens/admin/Dashboard');
+          break;
+        case 'Supporter':
+          router.replace('/screens/supporter/Dashboard');
+          break;
+        default:
+          router.replace('/screens/auth/login');
+      }
     } catch (error) {
       const err = error as { message: string };
       Alert.alert('Signup Error', err.message);
@@ -98,7 +112,7 @@ export default function SignupScreen() {
         onChangeText={setConfirmPassword}
       />
 
-      {/* Dropdown */}
+      {/* Role Dropdown */}
       <View style={styles.dropdownWrapper}>
         <Text style={styles.dropdownLabel}>Select Role</Text>
         <View style={styles.pickerContainer}>
@@ -129,7 +143,7 @@ export default function SignupScreen() {
       <Text style={styles.orText}>or sign up with</Text>
       <SocialButtons />
 
-      <TouchableOpacity onPress={() => router.push('/screens/auth/LoginScreen')}>
+      <TouchableOpacity onPress={() => router.push('/screens/auth/login')}>
         <Text style={styles.linkText}>
           Have an account? <Text style={styles.link}>SIGN IN</Text>
         </Text>

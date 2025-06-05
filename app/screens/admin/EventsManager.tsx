@@ -1,6 +1,6 @@
-import { MaterialIcons } from '@expo/vector-icons'; // For various icons
-import { useRouter } from 'expo-router'; // Import useRouter
-import React, { useCallback, useEffect, useState } from 'react'; // Added useEffect
+import { MaterialIcons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   Alert,
   FlatList,
@@ -15,118 +15,119 @@ import {
   TextInput,
   TouchableOpacity,
   View,
+  ActivityIndicator, // Added for loading state
 } from 'react-native';
 
-// Import for date/time pickers and dropdowns
-import DateTimePicker from '@react-native-community/datetimepicker';
+
+import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { Picker } from '@react-native-picker/picker';
 
+// --- Firebase Imports ---
+import { db } from '../../../firebase/firebase'; // Adjust path as needed
+import {
+  collection,
+  addDoc,
+  doc,
+  updateDoc,
+  deleteDoc,
+  onSnapshot,
+  query,
+  orderBy,
+  Timestamp, // For storing dates in a Firebase-optimized way
+} from 'firebase/firestore';
+
 // --- Type Definitions ---
-
-// Define possible statuses for an event
 type EventStatus = 'Draft' | 'Published' | 'Completed' | 'Cancelled';
-type EventAudience = 'All' | 'Players' | 'Coaches' | 'Supporters'; // Define Audience type
+type EventAudience = 'All' | 'Players' | 'Coaches' | 'Supporters';
 
-// Define the structure for an Event item
 type EventItem = {
-  id: string;
+  id: string; // Firestore document ID
   title: string;
   description: string;
-  startDate: number; // Unix timestamp
-  endDate: number; // Unix timestamp
+  startDate: number; // Unix timestamp (milliseconds)
+  endDate: number; // Unix timestamp (milliseconds)
   location: string;
   organizer?: string;
-  audience?: EventAudience; // Use the defined type
+  audience?: EventAudience;
   registrationLink?: string;
-  imageUrl?: string; // Optional event banner/image
-  status: EventStatus; // Use the defined type
+  imageUrl?: string;
+  status: EventStatus;
 };
 
-// --- Dummy Data ---
-
-const DUMMY_EVENTS: EventItem[] = [
-  {
-    id: 'e1',
-    title: "Senior Men's League Matchday 5",
-    description: 'Crucial matches for the top teams in the senior men\'s division. Come support your favorite team!',
-    startDate: new Date('2025-06-15T14:00:00').getTime(),
-    endDate: new Date('2025-06-15T18:00:00').getTime(),
-    location: 'National Hockey Stadium, Windhoek',
-    organizer: 'NHU',
-    audience: 'All',
-    imageUrl: 'https://placehold.co/100x70/007AFF/FFFFFF?text=Match',
-    status: 'Published',
-  },
-  {
-    id: 'e2',
-    title: 'U16 Girls Training Camp',
-    description: 'Intensive training camp for selected U16 girls squad members. Focus on skill development and teamwork.',
-    startDate: new Date('2025-07-01T09:00:00').getTime(),
-    endDate: new Date('2025-07-05T17:00:00').getTime(),
-    location: 'DTS Sports Club, Windhoek',
-    organizer: 'NHU Coaching Staff',
-    audience: 'Players',
-    status: 'Published',
-  },
-  {
-    id: 'e3',
-    title: 'NHU Annual Gala Dinner',
-    description: 'A night to celebrate the achievements of Namibian hockey. Awards ceremony and fundraising.',
-    startDate: new Date('2025-05-20T19:00:00').getTime(), // Past event
-    endDate: new Date('2025-05-20T23:00:00').getTime(),
-    location: 'Safari Hotel & Conference Centre',
-    organizer: 'NHU Board',
-    status: 'Completed',
-  },
-  {
-    id: 'e4',
-    title: 'Coaches Workshop: Modern Tactics',
-    description: 'A workshop for all registered coaches on modern hockey tactics and player development strategies.',
-    startDate: new Date('2025-08-10T10:00:00').getTime(),
-    endDate: new Date('2025-08-10T16:00:00').getTime(),
-    location: 'Online (Zoom Link Provided)',
-    organizer: 'NHU Technical Committee',
-    audience: 'Coaches',
-    status: 'Draft', // Not yet published
-  },
-  {
-    id: 'e5',
-    title: 'Youth Hockey Festival',
-    description: 'A fun festival for young hockey enthusiasts, focusing on participation and enjoyment.',
-    startDate: new Date('2025-09-01T08:30:00').getTime(),
-    endDate: new Date('2025-09-01T14:00:00').getTime(),
-    location: 'UNAM Hockey Fields',
-    organizer: 'NHU Development',
-    status: 'Cancelled', // Cancelled event
-  },
-];
+// Remove DUMMY_EVENTS
 
 const EventsManager = () => {
   const router = useRouter();
-  const [events, setEvents] = useState<EventItem[]>(DUMMY_EVENTS);
+  const [events, setEvents] = useState<EventItem[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
-  const [refreshing, setRefreshing] = useState(false);
+  const [refreshing, setRefreshing] = useState(false); // For pull-to-refresh UX
+  const [loading, setLoading] = useState(true); // For initial data load
 
-  // --- State for the Modal Form ---
   const [isModalVisible, setIsModalVisible] = useState(false);
-  const [eventToEdit, setEventToEdit] = useState<EventItem | null>(null); // Holds event data for editing or null for new event
-  const [formData, setFormData] = useState<Partial<EventItem>>({}); // State for form inputs
+  const [eventToEdit, setEventToEdit] = useState<EventItem | null>(null);
+  const [formData, setFormData] = useState<Partial<EventItem>>({});
   const [showStartDatePicker, setShowStartDatePicker] = useState(false);
   const [showEndDatePicker, setShowEndDatePicker] = useState(false);
+
+  const eventsCollectionRef = collection(db, 'events');
+
+  // --- Firebase Data Fetching (Real-time) ---
+  useEffect(() => {
+    setLoading(true);
+    // Listen for real-time updates, ordered by startDate descending
+    const q = query(eventsCollectionRef, orderBy('startDate', 'desc'));
+
+    const unsubscribe = onSnapshot(
+      q,
+      (querySnapshot) => {
+        const fetchedEvents: EventItem[] = [];
+        querySnapshot.forEach((doc) => {
+          const data = doc.data();
+          fetchedEvents.push({
+            id: doc.id,
+            title: data.title,
+            description: data.description,
+            // Ensure timestamps are numbers if stored as Firebase Timestamps
+            // If you store them as numbers (Unix ms), this conversion isn't needed.
+            startDate: data.startDate, // Assuming stored as Unix ms
+            endDate: data.endDate,     // Assuming stored as Unix ms
+            location: data.location,
+            organizer: data.organizer,
+            audience: data.audience,
+            registrationLink: data.registrationLink,
+            imageUrl: data.imageUrl,
+            status: data.status,
+          } as EventItem); // Type assertion
+        });
+        setEvents(fetchedEvents);
+        setLoading(false);
+      },
+      (error) => {
+        console.error('Error fetching events: ', error);
+        Alert.alert('Error', 'Could not fetch events from the database.');
+        setLoading(false);
+      }
+    );
+
+    return () => unsubscribe(); // Cleanup subscription on unmount
+  }, []);
 
   // Effect to initialize form data when modal opens or eventToEdit changes
   useEffect(() => {
     if (isModalVisible) {
       if (eventToEdit) {
-        setFormData(eventToEdit); // Populate with existing event data
-      } else {
-        // Initialize for a new event
         setFormData({
-          id: `new-${Date.now()}`, // Generate a temporary ID for new event
+            ...eventToEdit,
+            // Dates are already Unix timestamps, so direct use is fine
+        });
+      } else {
+        const now = Date.now();
+        setFormData({
+          // id will be generated by Firestore on add
           title: '',
           description: '',
-          startDate: Date.now(),
-          endDate: Date.now() + 3600000, // +1 hour from now
+          startDate: now,
+          endDate: now + 3600000, // +1 hour
           location: '',
           status: 'Draft',
           audience: 'All',
@@ -138,18 +139,13 @@ const EventsManager = () => {
     }
   }, [isModalVisible, eventToEdit]);
 
-  // Filter events based on search query
-  const filteredEvents = events.filter(event =>
-    event.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    event.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    event.location.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredEvents = events.filter(
+    (event) =>
+      event.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      event.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      event.location.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  /**
-   * Formats a Unix timestamp into a readable date and time string.
-   * @param timestamp The Unix timestamp.
-   * @returns Formatted date and time string.
-   */
   const formatDate = (timestamp: number): string => {
     const date = new Date(timestamp);
     return date.toLocaleDateString('en-US', {
@@ -161,11 +157,6 @@ const EventsManager = () => {
     });
   };
 
-  /**
-   * Gets the appropriate style for an event's status.
-   * @param status The status of the event.
-   * @returns Style object for the status text.
-   */
   const getStatusStyle = (status: EventStatus) => {
     switch (status) {
       case 'Published': return styles.statusPublished;
@@ -176,11 +167,7 @@ const EventsManager = () => {
     }
   };
 
-  /**
-   * Handles deleting an event.
-   * @param eventId The ID of the event to delete.
-   */
-  const handleDeleteEvent = (eventId: string) => {
+  const handleDeleteEvent = async (eventId: string) => {
     Alert.alert(
       'Delete Event',
       'Are you sure you want to delete this event? This action cannot be undone.',
@@ -188,10 +175,17 @@ const EventsManager = () => {
         { text: 'Cancel', style: 'cancel' },
         {
           text: 'Delete',
-          onPress: () => {
-            setEvents(prevEvents => prevEvents.filter(event => event.id !== eventId));
-            console.log(`Event ${eventId} deleted.`);
-            // In a real app, call API to delete the event from the backend
+          onPress: async () => {
+            try {
+              const eventDocRef = doc(db, 'events', eventId);
+              await deleteDoc(eventDocRef);
+              console.log(`Event ${eventId} deleted from Firestore.`);
+              // Real-time listener will update the UI
+              Alert.alert('Success', 'Event deleted successfully.');
+            } catch (error) {
+              console.error('Error deleting event: ', error);
+              Alert.alert('Error', 'Could not delete the event. Please try again.');
+            }
           },
           style: 'destructive',
         },
@@ -199,51 +193,81 @@ const EventsManager = () => {
     );
   };
 
-  /**
-   * Opens the modal to add a new event.
-   */
   const handleAddEvent = () => {
-    setEventToEdit(null); // No event to edit, so it's a new one
+    setEventToEdit(null);
     setIsModalVisible(true);
   };
 
-  /**
-   * Opens the modal to edit an existing event.
-   * @param event The event object to edit.
-   */
   const handleEditEvent = (event: EventItem) => {
-    setEventToEdit(event); // Set the event data to pre-fill the form
+    setEventToEdit(event);
     setIsModalVisible(true);
   };
 
-  // --- Modal Form Handlers ---
-
-  /**
-   * Updates a specific field of the modal form data.
-   */
-  const handleChangeFormData = (field: keyof EventItem, value: string | number | EventStatus | EventAudience) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+  const handleChangeFormData = (
+    field: keyof EventItem,
+    value: string | number | EventStatus | EventAudience
+  ) => {
+    setFormData((prev) => ({ ...prev, [field]: value }));
   };
+  //
+const onDateChange = (
 
-  /**
-   * Handles date/time picker changes for the form.
-   */
-  const onDateChange = (event: any, selectedDate: Date | undefined, field: 'startDate' | 'endDate') => {
-    const currentDate = selectedDate || (field === 'startDate' ? new Date(formData.startDate!) : new Date(formData.endDate!));
-    if (field === 'startDate') setShowStartDatePicker(Platform.OS === 'ios');
-    else setShowEndDatePicker(Platform.OS === 'ios');
+event: DateTimePickerEvent, // Use the specific event type
 
-    if (currentDate) {
-      handleChangeFormData(field, currentDate.getTime());
-    }
-  };
+selectedDate: Date | undefined,
 
-  /**
-   * Handles saving the event data from the modal form.
-   */
-  const handleSaveModal = () => {
-    // Basic validation
-    if (!formData.title || !formData.description || !formData.location || !formData.startDate || !formData.endDate) {
+ field: 'startDate' | 'endDate'
+
+ ) => {
+
+ // Always hide the picker after an interaction on any platform
+
+ if (field === 'startDate') {
+ setShowStartDatePicker(false); // Make sure this is set to false for Android too
+ } else {
+
+ setShowEndDatePicker(false); // Make sure this is set to false for Android too
+
+ }
+
+
+
+ // Check if a date was actually selected
+
+ if (event.type === 'set' && selectedDate) {
+
+// A date was selected
+
+handleChangeFormData(field, selectedDate.getTime());
+
+ } else {
+
+ // Picker was dismissed (event.type === 'dismissed') or another action occurred
+
+ // You might want to log this or handle it if necessary,
+
+// but for setting the date, only proceed if event.type is 'set'.
+
+ console.log(`Picker for ${field} was dismissed or no date was set.`);
+
+}
+
+};
+
+
+
+  //
+
+  
+
+  const handleSaveModal = async () => {
+    if (
+      !formData.title ||
+      !formData.description ||
+      !formData.location ||
+      !formData.startDate ||
+      !formData.endDate
+    ) {
       Alert.alert('Missing Information', 'Please fill in Title, Description, Location, Start Date, and End Date.');
       return;
     }
@@ -253,39 +277,45 @@ const EventsManager = () => {
       return;
     }
 
-    // Ensure all required fields for EventItem type are present
-    const finalData: EventItem = {
-      id: formData.id || `e${Date.now()}`, // Ensure ID exists for new events
-      title: formData.title,
-      description: formData.description,
-      startDate: formData.startDate,
-      endDate: formData.endDate,
-      location: formData.location,
-      organizer: formData.organizer || '',
-      audience: formData.audience || 'All',
-      registrationLink: formData.registrationLink || '',
-      imageUrl: formData.imageUrl || '',
-      status: formData.status || 'Draft',
+    // Prepare data for Firestore. Ensure all required fields for EventItem are present.
+    // ID is handled by Firestore for new docs, or taken from eventToEdit for updates.
+    const eventDataPayload: Omit<EventItem, 'id'> = {
+        title: formData.title!,
+        description: formData.description!,
+        startDate: formData.startDate!, // Storing as Unix ms
+        endDate: formData.endDate!,     // Storing as Unix ms
+        location: formData.location!,
+        organizer: formData.organizer || '',
+        audience: formData.audience || 'All',
+        registrationLink: formData.registrationLink || '',
+        imageUrl: formData.imageUrl || '',
+        status: formData.status || 'Draft',
     };
 
-    const isNew = !eventToEdit; // If eventToEdit was null, it's a new event
 
-    if (isNew) {
-      setEvents(prevEvents => [finalData, ...prevEvents]); // Add new event to the beginning
-    } else {
-      setEvents(prevEvents =>
-        prevEvents.map(event => (event.id === finalData.id ? finalData : event))
-      );
+    setLoading(true); // Show loading indicator during save
+
+    try {
+      if (eventToEdit && eventToEdit.id) {
+        // Update existing event
+        const eventDocRef = doc(db, 'events', eventToEdit.id);
+        await updateDoc(eventDocRef, eventDataPayload);
+        Alert.alert('Success', 'Event updated successfully!');
+      } else {
+        // Add new event
+        await addDoc(eventsCollectionRef, eventDataPayload);
+        Alert.alert('Success', 'Event added successfully!');
+      }
+      setIsModalVisible(false);
+      setEventToEdit(null);
+    } catch (error) {
+      console.error('Error saving event: ', error);
+      Alert.alert('Error', 'Could not save the event. Please try again.');
+    } finally {
+      setLoading(false);
     }
-    setIsModalVisible(false); // Close the modal
-    setEventToEdit(null); // Clear the event being edited
-    Alert.alert('Success', `Event ${isNew ? 'added' : 'updated'} successfully!`);
-    // In a real app, send data to your backend API here
   };
 
-  /**
-   * Handles canceling the modal form.
-   */
   const handleCancelModal = () => {
     Alert.alert(
       'Discard Changes',
@@ -295,8 +325,8 @@ const EventsManager = () => {
         {
           text: 'Yes',
           onPress: () => {
-            setIsModalVisible(false); // Close the modal
-            setEventToEdit(null); // Clear any pending event to edit
+            setIsModalVisible(false);
+            setEventToEdit(null);
           },
           style: 'destructive',
         },
@@ -304,35 +334,25 @@ const EventsManager = () => {
     );
   };
 
-  /**
-   * Simulates refreshing events (e.g., fetching new data from a server).
-   */
-  const onRefresh = useCallback(() => {
+  const onRefresh = useCallback(async () => { // Modified to be an actual refresh if needed
     setRefreshing(true);
-    // Simulate fetching new data
+    // The onSnapshot listener already keeps data up-to-date.
+    // This onRefresh can be used to give visual feedback or force a re-check if desired,
+    // but with onSnapshot, it's less about fetching new data.
+    // You could add a manual re-fetch here if you had a specific reason,
+    // but for now, it's mostly a UX pattern.
+    console.log("Pull-to-refresh triggered.");
+    // Simulate a delay for the refresh indicator
     setTimeout(() => {
-      const newEvent: EventItem = {
-        id: `fresh-${Date.now()}`,
-        title: 'Refreshed Event Added!',
-        description: 'This event appeared after pulling down to refresh.',
-        startDate: Date.now() + (1000 * 60 * 60 * 24 * 7), // 7 days from now
-        endDate: Date.now() + (1000 * 60 * 60 * 24 * 7) + (1000 * 60 * 60 * 2), // 2 hours duration
-        location: 'Refresh Arena',
-        status: 'Draft',
-      };
-      setEvents(prev => [newEvent, ...prev.slice(0, 4)]); // Add new, keep list shorter for demo
       setRefreshing(false);
-    }, 1500);
+      // No need to manually add events here, Firestore listener does that.
+    }, 1000);
   }, []);
 
-  /**
-   * Renders a single Event Card in the FlatList.
-   * @param item The EventItem object to render.
-   */
   const renderEventCard = ({ item }: { item: EventItem }) => (
     <TouchableOpacity
       style={styles.eventCard}
-      onPress={() => handleEditEvent(item)} // Tapping card opens edit modal
+      onPress={() => handleEditEvent(item)}
       activeOpacity={0.8}
     >
       <Image
@@ -362,27 +382,33 @@ const EventsManager = () => {
     </TouchableOpacity>
   );
 
+  if (loading && events.length === 0) { // Show full screen loader only on initial load
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#007AFF" />
+        <Text style={styles.loadingText}>Loading Events...</Text>
+      </View>
+    );
+  }
+
   return (
     <KeyboardAvoidingView
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 60 : 0}
     >
-      {/* Header */}
       <View style={styles.header}>
-        {/* Back button */}
         <TouchableOpacity onPress={() => router.push('./../admin/Dashboard')} style={styles.backButton}>
           <MaterialIcons name="arrow-back" size={24} color="#fff" />
         </TouchableOpacity>
         <Image
-          source={require('../../../assets/images/logo.jpeg')} // Update this path
+          source={require('../../../assets/images/logo.jpeg')} // Make sure this path is correct
           style={styles.headerLogo}
           resizeMode="contain"
         />
         <Text style={styles.headerTitle}>Manage Events</Text>
       </View>
 
-      {/* Search Bar */}
       <TextInput
         style={styles.searchBar}
         placeholder="Search events..."
@@ -391,8 +417,7 @@ const EventsManager = () => {
         onChangeText={setSearchQuery}
       />
 
-      {/* Event List or Empty State */}
-      {filteredEvents.length === 0 ? (
+      {filteredEvents.length === 0 && !loading ? ( // Show empty state only if not loading
         <ScrollView
           contentContainerStyle={styles.emptyListContainer}
           refreshControl={
@@ -416,12 +441,10 @@ const EventsManager = () => {
         />
       )}
 
-      {/* Floating Add Event Button */}
       <TouchableOpacity style={styles.floatingAddButton} onPress={handleAddEvent}>
         <MaterialIcons name="add" size={30} color="#fff" />
       </TouchableOpacity>
 
-      {/* --- Modal Form for Add/Edit Event (All within EventsManager.tsx) --- */}
       <Modal
         animationType="slide"
         transparent={false}
@@ -438,8 +461,8 @@ const EventsManager = () => {
               <MaterialIcons name="close" size={24} color="#FF3B30" />
             </TouchableOpacity>
             <Text style={styles.modalTitle}>{eventToEdit ? 'Edit Event' : 'Add New Event'}</Text>
-            <TouchableOpacity onPress={handleSaveModal} style={styles.saveButton}>
-              <MaterialIcons name="check" size={24} color="#007AFF" />
+            <TouchableOpacity onPress={handleSaveModal} style={styles.saveButton} disabled={loading}>
+              {loading && isModalVisible ? <ActivityIndicator size="small" color="#007AFF" /> : <MaterialIcons name="check" size={24} color="#007AFF" />}
             </TouchableOpacity>
           </View>
 
@@ -473,7 +496,7 @@ const EventsManager = () => {
             <Text style={styles.label}>Start Date & Time:</Text>
             <TouchableOpacity onPress={() => setShowStartDatePicker(true)} style={styles.datePickerButton}>
               <MaterialIcons name="calendar-today" size={20} color="#007AFF" />
-              <Text style={styles.datePickerButtonText}>{formatDate(formData.startDate!)}</Text>
+              <Text style={styles.datePickerButtonText}>{formatDate(formData.startDate || Date.now())}</Text>
             </TouchableOpacity>
             {showStartDatePicker && (
               <DateTimePicker
@@ -489,7 +512,7 @@ const EventsManager = () => {
             <Text style={styles.label}>End Date & Time:</Text>
             <TouchableOpacity onPress={() => setShowEndDatePicker(true)} style={styles.datePickerButton}>
               <MaterialIcons name="calendar-today" size={20} color="#007AFF" />
-              <Text style={styles.datePickerButtonText}>{formatDate(formData.endDate!)}</Text>
+              <Text style={styles.datePickerButtonText}>{formatDate(formData.endDate || Date.now())}</Text>
             </TouchableOpacity>
             {showEndDatePicker && (
               <DateTimePicker
@@ -557,7 +580,6 @@ const EventsManager = () => {
                 <Picker.Item label="Cancelled" value="Cancelled" />
               </Picker>
             </View>
-
           </ScrollView>
         </KeyboardAvoidingView>
       </Modal>
@@ -568,10 +590,21 @@ const EventsManager = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f0f2f5', // Light background
+    backgroundColor: '#f0f2f5',
+  },
+  loadingContainer: { // Added for initial full screen loading
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#f0f2f5',
+  },
+  loadingText: { // Added
+    marginTop: 10,
+    fontSize: 16,
+    color: '#333',
   },
   header: {
-    paddingTop: 50,
+    paddingTop: Platform.OS === 'android' ? 25 : 50, // Adjust for status bar
     paddingBottom: 10,
     alignItems: 'center',
     backgroundColor: '#fff',
@@ -582,34 +615,34 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 2,
     elevation: 3,
-    flexDirection: 'row', // Added for back button positioning
-    justifyContent: 'center', // Center content
+    flexDirection: 'row',
+    justifyContent: 'center',
   },
   backButton: {
-    position: 'absolute', // Position absolutely
+    position: 'absolute',
     left: 15,
-    top: 50, // Align with header padding
-    zIndex: 10, // Ensure it's above other elements
+    top: Platform.OS === 'android' ? 28 : 50, // Align with header padding
+    zIndex: 10,
     backgroundColor: '#007AFF',
     borderRadius: 20,
     padding: 8,
   },
   headerLogo: {
-    width: 60,
-    height: 60,
-    marginBottom: 5,
+    width: Platform.OS === 'android' ? 40 : 50, // Adjusted size
+    height: Platform.OS === 'android' ? 40 : 50, // Adjusted size
+    // marginBottom: 5, // Removed to align better with title
   },
   headerTitle: {
     fontSize: 20,
     fontWeight: 'bold',
     color: '#333',
-    marginLeft: 10, // Adjust for logo and back button
+    marginLeft: 10,
   },
   searchBar: {
     backgroundColor: '#fff',
     borderRadius: 10,
     paddingHorizontal: 15,
-    paddingVertical: 10,
+    paddingVertical: Platform.OS === 'ios' ? 12 : 10, // OS specific padding
     margin: 15,
     fontSize: 16,
     shadowColor: '#000',
@@ -617,11 +650,12 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 2,
     elevation: 2,
+    color: '#333', // Text color
   },
   listContent: {
     paddingHorizontal: 15,
-    paddingVertical: 15,
-    paddingBottom: 80, // Space for the floating button
+    paddingTop: 0, // Removed top padding as searchBar has margin
+    paddingBottom: 80,
   },
   eventCard: {
     flexDirection: 'row',
@@ -629,11 +663,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderRadius: 12,
     padding: 15,
-    marginBottom: 10,
+    marginBottom: 12, // Increased margin
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
+    shadowOpacity: 0.08, // Slightly reduced opacity
+    shadowRadius: 4, // Slightly increased radius
     elevation: 3,
   },
   eventImage: {
@@ -641,58 +675,61 @@ const styles = StyleSheet.create({
     height: 80,
     borderRadius: 10,
     marginRight: 15,
-    backgroundColor: '#ddd',
-    resizeMode: 'cover',
+    backgroundColor: '#e9ecef', // Lighter placeholder
   },
   eventInfo: {
     flex: 1,
   },
   eventTitle: {
-    fontSize: 16,
+    fontSize: 17, // Slightly larger
     fontWeight: '600',
-    color: '#333',
-    marginBottom: 4,
+    color: '#212529', // Darker title
+    marginBottom: 5,
   },
   eventDetails: {
     fontSize: 13,
-    color: '#666',
-    marginTop: 2,
+    color: '#495057', // Softer detail color
+    marginTop: 3,
     flexDirection: 'row',
     alignItems: 'center',
   },
   eventStatus: {
     fontSize: 12,
     fontWeight: 'bold',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
+    paddingHorizontal: 10, // More padding
+    paddingVertical: 5,    // More padding
+    borderRadius: 15,      // More rounded
     overflow: 'hidden',
-    alignSelf: 'flex-start', // Align status to the left
-    marginTop: 8,
+    alignSelf: 'flex-start',
+    marginTop: 10, // More margin top
+    textTransform: 'uppercase', // Uppercase status
+    letterSpacing: 0.5,       // Slight letter spacing
   },
   statusPublished: {
-    backgroundColor: '#D0EAFB',
-    color: '#007AFF',
+    backgroundColor: '#e7f5ff', // Lighter blue
+    color: '#007bff',
   },
   statusCompleted: {
-    backgroundColor: '#E6FBE6',
-    color: '#28a745',
+    backgroundColor: '#e6f9f0', // Lighter green
+    color: '#20c997',
   },
   statusCancelled: {
-    backgroundColor: '#FFEBEE',
-    color: '#FF3B30',
+    backgroundColor: '#fff0f1', // Lighter red
+    color: '#dc3545',
   },
   statusDraft: {
-    backgroundColor: '#FFFBE6',
-    color: '#FF9500',
+    backgroundColor: '#fff9e6', // Lighter orange
+    color: '#fd7e14',
   },
   eventActions: {
-    flexDirection: 'row',
+    flexDirection: 'column', // Changed to column for potentially more actions
+    justifyContent: 'space-around', // Space them out
     marginLeft: 10,
+    height: '100%', // Take full height of card for alignment
   },
   actionIcon: {
-    padding: 8,
-    marginLeft: 5,
+    padding: 6, // Slightly smaller padding
+    // Removed marginLeft for column layout
   },
   floatingAddButton: {
     position: 'absolute',
@@ -711,81 +748,84 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
   emptyListContainer: {
-    flex: 1,
+    flexGrow: 1, // Use flexGrow to allow scrolling even when content is small
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
-    minHeight: 200,
+    minHeight: Platform.OS === 'ios' ? 300 : 250, // Ensure it takes up some space
   },
   emptyListText: {
     fontSize: 18,
-    color: '#666',
+    color: '#6c757d', // Softer color
     textAlign: 'center',
     marginTop: 15,
-    fontWeight: 'bold',
+    fontWeight: '600', // Slightly bolder
   },
   emptyListSubText: {
     fontSize: 14,
-    color: '#999',
+    color: '#adb5bd', // Lighter subtext
     textAlign: 'center',
-    marginTop: 5,
+    marginTop: 8,
   },
-  // --- Modal Specific Styles (copied from previous modal component) ---
   modalContainer: {
     flex: 1,
-    backgroundColor: '#f0f2f5',
+    backgroundColor: '#f8f9fa', // Lighter modal background
   },
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingTop: 50,
+    paddingTop: Platform.OS === 'android' ? 25 : 50,
     paddingHorizontal: 15,
     paddingBottom: 15,
-    backgroundColor: '#fff',
+    backgroundColor: '#ffffff',
     borderBottomWidth: 1,
-    borderBottomColor: '#eee',
+    borderBottomColor: '#dee2e6', // Softer border
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
     shadowRadius: 2,
-    elevation: 3,
+    elevation: 2,
   },
   modalTitle: {
     fontSize: 20,
-    fontWeight: 'bold',
-    color: '#333',
+    fontWeight: '600', // Bolder title
+    color: '#343a40', // Darker title
   },
   closeButton: {
-    padding: 5,
+    padding: 8, // More touch area
   },
   saveButton: {
-    padding: 5,
+    padding: 8, // More touch area
+    minWidth: 30, // Ensure it has some width for activity indicator
+    alignItems: 'center',
   },
   formContainer: {
     padding: 20,
-    paddingBottom: 40,
+    paddingBottom: Platform.OS === 'ios' ? 60 : 40, // More padding at bottom for scroll
   },
   label: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#555',
-    marginBottom: 5,
-    marginTop: 15,
+    color: '#495057', // Softer label color
+    marginBottom: 8, // Increased margin
+    marginTop: 18, // Increased margin
   },
   input: {
     backgroundColor: '#fff',
     borderRadius: 8,
     paddingHorizontal: 15,
-    paddingVertical: 10,
+    paddingVertical: Platform.OS === 'ios' ? 14 : 10, // OS specific padding
     fontSize: 16,
     borderWidth: 1,
-    borderColor: '#ddd',
-    marginBottom: 5,
+    borderColor: '#ced4da', // Softer border
+    marginBottom: 10, // Increased margin
+    color: '#495057', // Input text color
   },
   multilineInput: {
     minHeight: 100,
     textAlignVertical: 'top',
+    paddingTop: 12, // Adjust padding for multiline
   },
   datePickerButton: {
     flexDirection: 'row',
@@ -793,27 +833,30 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderRadius: 8,
     paddingHorizontal: 15,
-    paddingVertical: 10,
+    paddingVertical: Platform.OS === 'ios' ? 14 : 12, // OS specific padding
     borderWidth: 1,
-    borderColor: '#ddd',
-    marginBottom: 5,
+    borderColor: '#ced4da',
+    marginBottom: 10,
   },
   datePickerButtonText: {
     marginLeft: 10,
     fontSize: 16,
-    color: '#333',
+    color: '#495057',
   },
   pickerContainer: {
     backgroundColor: '#fff',
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#ddd',
-    overflow: 'hidden',
-    marginBottom: 5,
+    borderColor: '#ced4da',
+    overflow: 'hidden', // Important for Picker border radius on Android
+    marginBottom: 10,
+    justifyContent: 'center', // Center picker text on Android
   },
   picker: {
-    height: 50,
+    height: Platform.OS === 'ios' ? undefined : 50, // iOS height is intrinsic
     width: '100%',
+    color: '#495057', // Picker text color
+    backgroundColor: Platform.OS === 'android' ? '#fff' : undefined, // Android needs explicit background
   },
 });
 
