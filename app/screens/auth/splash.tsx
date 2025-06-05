@@ -1,13 +1,12 @@
+import { useRouter } from 'expo-router';
+import LottieView from 'lottie-react-native';
 import React, { useEffect, useRef } from 'react';
 import {
   ActivityIndicator,
   Animated,
   StyleSheet,
-  View,
-  Text,
+  View
 } from 'react-native';
-import LottieView from 'lottie-react-native';
-import { useRouter } from 'expo-router';
 
 export default function SplashScreen() {
   const router = useRouter();
@@ -50,7 +49,7 @@ export default function SplashScreen() {
 
     // Navigate to login after a short delay (e.g., 3 seconds)
     const timeout = setTimeout(() => {
-      router.replace('/screens/auth/login');
+      router.replace('/screens/auth/Login');
     }, 3000);
 
     return () => clearTimeout(timeout);
