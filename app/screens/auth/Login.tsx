@@ -13,7 +13,7 @@ import { useRouter } from 'expo-router';
 import SocialButtons from '../../../components/SocialButton';
 
 import { signInWithEmailAndPassword } from 'firebase/auth';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, Timestamp } from 'firebase/firestore'; // Added setDoc, Timestamp
 import { auth, db } from '../../../firebase/firebase'; // Adjust this path if needed
 
 
@@ -33,20 +33,47 @@ export default function LoginScreen() {
     setLoading(true);
 
     try {
-      // 🔐 Sign in the user
+      // 🔐 Sign in the user with Firebase Authentication
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      const user = userCredential.user;
+      const user = userCredential.user; // Get the authenticated user object
 
-      // 🔍 Fetch role from Firestore
-      const userDoc = await getDoc(doc(db, 'users', user.uid));
-      if (!userDoc.exists()) {
-        throw new Error('User role not found in Firestore.');
+      // 🔍 Try to fetch the user's profile from Firestore
+      const userDocRef = doc(db, 'users', user.uid);
+      const userDocSnap = await getDoc(userDocRef);
+
+      let userRole: string; // Variable to store the user's determined role
+
+      if (!userDocSnap.exists()) {
+        // 🚨 User document NOT found in Firestore, this is a first-time login after Firebase Auth signup
+        console.warn(`Firestore user document not found for UID: ${user.uid}. Creating a default profile.`);
+
+        // Assign a default role and name for new users
+        userRole = 'Player'; // Or 'Fan', depending on your default for new sign-ups
+        const defaultName = email.split('@')[0]; // Simple name from email for new users
+        const defaultAvatar = `https://placehold.co/40x40/6633FF/FFFFFF?text=${defaultName.substring(0,2).toUpperCase()}`;
+
+        // Create the user document in Firestore with default values
+        await setDoc(userDocRef, {
+          uid: user.uid,
+          name: defaultName,
+          email: user.email || email, // Use Firebase Auth email, fallback to input email
+          role: userRole,
+          createdAt: Timestamp.now(), // Use Firestore server timestamp
+          avatar: defaultAvatar,
+        });
+
+        Alert.alert(
+          'Welcome!',
+          `Your basic profile as a '${userRole}' has been created. You can now use the forum!`
+        );
+
+      } else {
+        // ✅ User document found in Firestore, get their existing role
+        userRole = userDocSnap.data()?.role;
       }
 
-      const role = userDoc.data()?.role;
-
-      // 🎯 Navigate based on role
-      switch (role) {
+      // 🎯 Navigate based on the determined role
+      switch (userRole) {
         case 'Player':
           router.replace('/screens/player/Dashboard');
           break;
@@ -60,12 +87,14 @@ export default function LoginScreen() {
           router.replace('/screens/supporter/Dashboard');
           break;
         default:
-          Alert.alert('Error', 'User role is undefined.');
+          // If the role is still undefined or an unexpected value, show an error
+          Alert.alert('Login Failed', 'User role is invalid or not set. Please contact support.');
       }
     } catch (error: any) {
+      // Handle Firebase Auth errors (e.g., wrong password, user not found)
       Alert.alert('Login Failed', error.message);
     } finally {
-      setLoading(false);
+      setLoading(false); // Always stop loading, regardless of success or failure
     }
   };
 

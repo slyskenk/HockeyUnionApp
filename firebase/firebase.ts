@@ -1,13 +1,25 @@
+// Import Firebase modules
 import { initializeApp } from 'firebase/app';
 import {
-  getAuth,
   initializeAuth,
-  getReactNativePersistence
+  getReactNativePersistence,
+  getAuth
 } from 'firebase/auth';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { getFirestore } from 'firebase/firestore';
+import {
+  getFirestore,
+  collection,
+  doc,
+  addDoc,
+  getDocs,
+  updateDoc,
+  deleteDoc,
+  query,
+  where
+} from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 
+// Firebase configuration
 const firebaseConfig = {
   apiKey: 'AIzaSyA-Z-7mzFScX-BTDD85ShkGGL6iavxeIOE',
   authDomain: 'hockey-union.firebaseapp.com',
@@ -17,14 +29,30 @@ const firebaseConfig = {
   appId: '1:163997337297:web:785da756306ed75686a7f0'
 };
 
+// Initialize Firebase app
 const app = initializeApp(firebaseConfig);
 
-// 👇 Fix: use `initializeAuth` for React Native
+// Initialize Auth with persistence for React Native
 const auth = initializeAuth(app, {
   persistence: getReactNativePersistence(AsyncStorage)
 });
 
+// Initialize Firestore and Storage
 const db = getFirestore(app);
 const storage = getStorage(app);
 
-export { app, auth, db, storage };
+// Export everything you need
+export {
+  app,
+  auth,
+  db,
+  storage,
+  collection,
+  doc,
+  addDoc,
+  getDocs,
+  updateDoc,
+  deleteDoc,
+  query,
+  where
+};

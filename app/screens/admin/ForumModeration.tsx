@@ -1,5 +1,5 @@
 import { Entypo, Ionicons, MaterialIcons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router'; // Import useRouter for navigation
+import { useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert,
@@ -15,112 +15,215 @@ import {
   TouchableOpacity,
   View,
   ViewStyle,
+  ActivityIndicator // Import ActivityIndicator for loading state
 } from 'react-native';
+
+// Import Firebase
+import {
+  collection,
+  query,
+  orderBy,
+  onSnapshot,
+  addDoc,
+  serverTimestamp,
+  doc,
+  updateDoc,
+  deleteDoc,
+  getDoc,
+} from 'firebase/firestore';
+import { onAuthStateChanged } from 'firebase/auth'; // Import onAuthStateChanged
+import { db, auth } from '../../../firebase/firebase'; // Ensure auth is imported
 
 const { width, height } = Dimensions.get('window');
 
 // Define message types for the forum
 type ForumMessage = {
-  id: string;
+  id: string; // Document ID from Firestore
   text: string;
-  senderId: string; // Unique ID for the sender
-  senderName: string; // Display name of the sender
-  senderAvatar?: string; // Optional avatar URL for the sender
-  timestamp: string; // e.g., "08:15 AM", "Just Now"
+  senderId: string;
+  senderName: string;
+  senderAvatar?: string;
+  timestamp: string; // This will be formatted from a Firebase Timestamp
+  createdAt: any; // Firebase Timestamp
+  senderRole?: User['role']; // Add senderRole here for rendering
 };
 
-// Define a User type for clarity, now including 'Unknown' role
+// Define a User type for clarity
 type User = {
+  uid: string; // Firebase Auth UID
   name: string;
   avatar: string;
   role: 'Admin' | 'Other Admin' | 'Coach' | 'Player' | 'Supporter' | 'Fan' | 'Unknown';
+  email: string;
+  createdAt: any; // Firebase Timestamp or Date
 };
-
-// Define the type for DUMMY_USERS with an index signature
-type DummyUsers = {
-  [key: string]: User; // Allows string indexing
-};
-
-// Dummy data for users and their avatars and roles
-const DUMMY_USERS: DummyUsers = {
-  'user1': { name: 'Slysken Kakuva', avatar: 'https://placehold.co/40x40/FF5733/FFFFFF?text=SK', role: 'Admin' },
-  'user2': { name: 'Admin User', avatar: 'https://placehold.co/40x40/33FF57/000000?text=AU', role: 'Other Admin' },
-  'user3': { name: 'Hockey Fan', avatar: 'https://placehold.co/40x40/3357FF/FFFFFF?text=HF', role: 'Fan' },
-  'user4': { name: 'Coach Mike', avatar: 'https://placehold.co/40x40/FFD700/000000?text=CM', role: 'Coach' },
-  'user5': { name: 'Player Ace', avatar: 'https://placehold.co/40x40/8A2BE2/FFFFFF?text=PA', role: 'Player' },
-  'user6': { name: 'Supporter Sam', avatar: 'https://placehold.co/40x40/FF00FF/FFFFFF?text=SS', role: 'Supporter' },
-};
-
-// Simulate the current logged-in user (Admin for moderation purposes)
-const CURRENT_USER_ID = 'user1';
-const CURRENT_USER_NAME = DUMMY_USERS[CURRENT_USER_ID].name;
-const CURRENT_USER_AVATAR = DUMMY_USERS[CURRENT_USER_ID].avatar;
-const CURRENT_USER_ROLE = DUMMY_USERS[CURRENT_USER_ID].role; // Get current user's role
 
 const ForumModeration = () => {
-  const router = useRouter(); // Initialize useRouter
-  const [messages, setMessages] = useState<ForumMessage[]>([
-    {
-      id: '1',
-      text: 'Welcome to the Namibia Hockey Union Forum! Feel free to ask questions and share updates.',
-      senderId: 'admin',
-      senderName: 'Forum Admin',
-      senderAvatar: 'https://placehold.co/40x40/8A2BE2/FFFFFF?text=ADM',
-      timestamp: 'Yesterday 10:00 AM',
-    },
-    {
-      id: '2',
-      text: 'Hello everyone! Excited for the upcoming season.',
-      senderId: 'user1',
-      senderName: DUMMY_USERS['user1'].name,
-      senderAvatar: DUMMY_USERS['user1'].avatar,
-      timestamp: '09:30 AM',
-    },
-    {
-      id: '3',
-      text: 'Does anyone know the schedule for the U16 league tryouts?',
-      senderId: 'user3',
-      senderName: DUMMY_USERS['user3'].name,
-      senderAvatar: DUMMY_USERS['user3'].avatar,
-      timestamp: '10:15 AM',
-    },
-    {
-      id: '4',
-      text: 'I believe the tryouts are next Saturday. Check the events section of the app for details!',
-      senderId: 'user2',
-      senderName: DUMMY_USERS['user2'].name,
-      senderAvatar: DUMMY_USERS['user2'].avatar,
-      timestamp: '10:20 AM',
-    },
-    {
-      id: '5',
-      text: 'This is a test message from a coach. Looking forward to the new season!',
-      senderId: 'user4',
-      senderName: DUMMY_USERS['user4'].name,
-      senderAvatar: DUMMY_USERS['user4'].avatar,
-      timestamp: '11:00 AM',
-    },
-    {
-      id: '6',
-      text: 'Great to see so much activity here! Any tips for new players?',
-      senderId: 'user6',
-      senderName: DUMMY_USERS['user6'].name,
-      senderAvatar: DUMMY_USERS['user6'].avatar,
-      timestamp: '11:30 AM',
-    },
-  ]);
+  const router = useRouter();
+  const [messages, setMessages] = useState<ForumMessage[]>([]);
   const [inputText, setInputText] = useState('');
-  const [searchQuery, setSearchQuery] = useState(''); // New state for search
-  const flatListRef = useRef<FlatList<ForumMessage>>(null); // Explicitly type FlatList ref
+  const [searchQuery, setSearchQuery] = useState('');
+  const flatListRef = useRef<FlatList<ForumMessage>>(null);
 
-  // Scroll to the bottom of the chat when messages update
+  // State for the currently logged-in user's AUTH UID
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  // State to hold current user's profile data from Firestore
+  const [currentUserData, setCurrentUserData] = useState<User | null>(null);
+  // State to manage loading of initial user data
+  const [loadingInitialData, setLoadingInitialData] = useState(true);
+
+  // --- 1. Listen for Firebase Auth State Changes ---
   useEffect(() => {
-    if (flatListRef.current) {
+    const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
+      console.log("ForumModeration: Auth State Changed. User UID:", user?.uid || "Logged out");
+      if (user) {
+        setCurrentUserId(user.uid);
+      } else {
+        setCurrentUserId(null);
+        setCurrentUserData(null); // Clear user data if logged out
+        setLoadingInitialData(false); // No user, so initial data is "loaded" (as null)
+      }
+    });
+
+    return () => unsubscribeAuth(); // Cleanup auth listener
+  }, []);
+
+  // --- 2. Fetch Current User Data from Firestore when currentUserId changes ---
+  useEffect(() => {
+    const fetchCurrentUserProfile = async () => {
+      if (!currentUserId) {
+        // If no user is logged in, or currentUserId is null, we're done loading this part
+        setCurrentUserData(null); // Ensure currentUserData is null
+        setLoadingInitialData(false);
+        console.log("ForumModeration: No current user ID to fetch profile for.");
+        return;
+      }
+
+      setLoadingInitialData(true); // Start loading user profile
+      try {
+        const userDocRef = doc(db, 'users', currentUserId);
+        const userDocSnap = await getDoc(userDocRef);
+
+        if (userDocSnap.exists()) {
+          const userData = { id: userDocSnap.id, ...userDocSnap.data() } as User; // Cast to User
+          setCurrentUserData(userData);
+          console.log("ForumModeration: User profile loaded for UID:", currentUserId, "Data:", userData);
+        } else {
+          console.warn(`ForumModeration: User document not found in Firestore for UID: ${currentUserId}. Creating a placeholder or prompting signup/profile completion.`);
+          // IMPORTANT: If a user logs in but doesn't have a profile, create a default
+          // This ensures they can interact if your rules allow defaults.
+          // This part should ideally be handled during SIGNUP, but as a fallback:
+          const defaultUser: User = {
+            uid: currentUserId,
+            name: "New User", // Or prompt for name
+            email: auth.currentUser?.email || "",
+            avatar: `https://placehold.co/40x40/6633FF/FFFFFF?text=${auth.currentUser?.email?.substring(0,1).toUpperCase() || '?' }`,
+            role: 'Fan', // Default role for new users without a full profile
+            createdAt: serverTimestamp(),
+          };
+          await setDoc(userDocRef, defaultUser);
+          setCurrentUserData(defaultUser);
+          console.log("ForumModeration: Default user profile created for UID:", currentUserId);
+          Alert.alert("Welcome!", "A basic profile has been created for you. You can now send messages!");
+        }
+      } catch (error) {
+        console.error("ForumModeration: Error fetching current user data:", error);
+        setCurrentUserData(null); // Clear data on error
+        Alert.alert("Error", "Failed to load your profile data. Please try again or contact support.");
+      } finally {
+        setLoadingInitialData(false); // End loading user profile
+      }
+    };
+
+    fetchCurrentUserProfile();
+  }, [currentUserId]); // Re-run when currentUserId changes
+
+  // --- Real-time message listener (adjusted to fetch sender roles) ---
+  useEffect(() => {
+    const q = query(collection(db, 'forumMessages'), orderBy('createdAt', 'asc'));
+
+    const unsubscribe = onSnapshot(q, async (snapshot) => {
+      const fetchedMessages: ForumMessage[] = [];
+      const userPromises: Promise<void>[] = [];
+      const userDataCache: { [key: string]: User } = {}; // Cache to avoid redundant fetches
+
+      for (const docSnapshot of snapshot.docs) {
+        const data = docSnapshot.data();
+        const senderId = data.senderId;
+
+        let senderName = data.senderName || 'Unknown User';
+        let senderAvatar = data.senderAvatar || 'https://placehold.co/40x40/CCCCCC/FFFFFF?text=?';
+        let senderRole: User['role'] = 'Unknown';
+
+        // Check cache first
+        if (userDataCache[senderId]) {
+          const cachedUser = userDataCache[senderId];
+          senderName = cachedUser.name;
+          senderAvatar = cachedUser.avatar || senderAvatar;
+          senderRole = cachedUser.role;
+        } else {
+          // If not in cache, fetch user data and add to cache
+          userPromises.push((async () => {
+            try {
+              const userDocRef = doc(db, 'users', senderId);
+              const userDocSnap = await getDoc(userDocRef);
+              if (userDocSnap.exists()) {
+                const userData = userDocSnap.data() as User;
+                userDataCache[senderId] = userData; // Store in cache
+                senderName = userData.name;
+                senderAvatar = userData.avatar || senderAvatar;
+                senderRole = userData.role;
+              } else {
+                console.warn(`User document for senderId ${senderId} not found.`);
+              }
+            } catch (error) {
+              console.error(`Error fetching user data for ${senderId}:`, error);
+            }
+          })());
+        }
+
+        fetchedMessages.push({
+          id: docSnapshot.id,
+          text: data.text,
+          senderId: data.senderId,
+          senderName: senderName, // Placeholder for now, updated after promises resolve
+          senderAvatar: senderAvatar, // Placeholder for now, updated after promises resolve
+          timestamp: formatTimestamp(data.createdAt?.toDate ? data.createdAt.toDate() : new Date()),
+          createdAt: data.createdAt,
+          senderRole: senderRole, // Placeholder for now, updated after promises resolve
+        });
+      }
+
+      await Promise.all(userPromises); // Wait for all user data fetches to complete
+
+      // Now, update messages with the fetched (or cached) sender details
+      const finalMessages = fetchedMessages.map(msg => {
+        const cachedUser = userDataCache[msg.senderId];
+        if (cachedUser) {
+          return {
+            ...msg,
+            senderName: cachedUser.name,
+            senderAvatar: cachedUser.avatar || msg.senderAvatar,
+            senderRole: cachedUser.role,
+          };
+        }
+        return msg; // Return as is if user data wasn't found
+      });
+      setMessages(finalMessages);
+    }, (error) => {
+      console.error("Error fetching messages:", error);
+      Alert.alert("Error", "Failed to load forum messages. Please try again later.");
+    });
+
+    return () => unsubscribe(); // Cleanup listener on component unmount
+  }, [formatTimestamp]); // Add formatTimestamp to dependency array
+
+  useEffect(() => {
+    if (flatListRef.current && messages.length > 0) {
       flatListRef.current.scrollToEnd({ animated: true });
     }
   }, [messages]);
 
-  // Memoized filtered messages based on search query
   const filteredMessages = useMemo(() => {
     return messages.filter(message =>
       message.text.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -128,8 +231,11 @@ const ForumModeration = () => {
     );
   }, [messages, searchQuery]);
 
-  // Function to format timestamp
   const formatTimestamp = useCallback((date: Date) => {
+    if (!(date instanceof Date)) {
+      console.warn("Invalid date object passed to formatTimestamp:", date);
+      return "Invalid Date";
+    }
     const hours = date.getHours();
     const minutes = date.getMinutes();
     const ampm = hours >= 12 ? 'PM' : 'AM';
@@ -138,29 +244,31 @@ const ForumModeration = () => {
     return `${formattedHours}:${formattedMinutes} ${ampm}`;
   }, []);
 
-  const handleSend = useCallback(() => {
-    if (inputText.trim()) {
-      const newMessage: ForumMessage = {
-        id: Date.now().toString(),
-        text: inputText.trim(),
-        senderId: CURRENT_USER_ID,
-        senderName: CURRENT_USER_NAME,
-        senderAvatar: CURRENT_USER_AVATAR,
-        timestamp: formatTimestamp(new Date()),
-      };
-      setMessages(prevMessages => [...prevMessages, newMessage]);
-      setInputText('');
-      // In a real app, you would send this message to a backend/database
+  const handleSend = useCallback(async () => {
+    // Only allow sending if there's text, user is logged in, and user data is loaded
+    if (inputText.trim() && currentUserId && currentUserData) {
+      try {
+        await addDoc(collection(db, 'forumMessages'), {
+          text: inputText.trim(),
+          senderId: currentUserId,
+          senderName: currentUserData.name,
+          senderAvatar: currentUserData.avatar || 'https://placehold.co/40x40/CCCCCC/FFFFFF?text=?',
+          createdAt: serverTimestamp(),
+        });
+        setInputText('');
+      } catch (error) {
+        console.error("Error sending message:", error);
+        Alert.alert("Error", "Failed to send message. Please try again.");
+      }
+    } else if (!currentUserId) {
+      Alert.alert("Authentication Required", "Please log in to send messages.");
+    } else if (!currentUserData) {
+      Alert.alert("Profile Missing", "Your user profile is incomplete. Cannot send message.");
     }
-  }, [inputText, formatTimestamp]);
+  }, [inputText, currentUserId, currentUserData]);
 
   // --- Admin Moderation Actions ---
 
-  /**
-   * Handles deleting a message.
-   * Only accessible by Admin/Other Admin.
-   * @param messageId The ID of the message to delete.
-   */
   const handleDeleteMessage = useCallback((messageId: string) => {
     Alert.alert(
       'Delete Message',
@@ -169,10 +277,14 @@ const ForumModeration = () => {
         { text: 'Cancel', style: 'cancel' },
         {
           text: 'Delete',
-          onPress: () => {
-            setMessages(prevMessages => prevMessages.filter(msg => msg.id !== messageId));
-            console.log(`Message ${messageId} deleted.`);
-            // In a real app, call API to delete message from backend
+          onPress: async () => {
+            try {
+              await deleteDoc(doc(db, 'forumMessages', messageId));
+              console.log(`Message ${messageId} deleted from Firestore.`);
+            } catch (error) {
+              console.error("Error deleting message:", error);
+              Alert.alert("Error", "Failed to delete message. Please try again.");
+            }
           },
           style: 'destructive',
         },
@@ -180,46 +292,45 @@ const ForumModeration = () => {
     );
   }, []);
 
-  /**
-   * Placeholder for editing a message.
-   * Only accessible by Admin/Other Admin.
-   * @param message The message object to edit.
-   */
   const handleEditMessage = useCallback((message: ForumMessage) => {
-    console.log('Edit message:', message.id);
-    Alert.alert('Edit Message', `Functionality to edit message "${message.text.substring(0, 20)}..." not implemented.`);
-    // In a real app, this would open a text input or modal to allow editing.
+    Alert.prompt(
+      'Edit Message',
+      'Enter new message text:',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Save',
+          onPress: async (newText) => {
+            if (newText && newText.trim()) {
+              try {
+                const messageRef = doc(db, 'forumMessages', message.id);
+                await updateDoc(messageRef, {
+                  text: newText.trim(),
+                });
+                console.log(`Message ${message.id} updated in Firestore.`);
+              } catch (error) {
+                console.error("Error updating message:", error);
+                Alert.alert("Error", "Failed to update message. Please try again.");
+              }
+            }
+          },
+        },
+      ],
+      'plain-text',
+      message.text
+    );
   }, []);
 
-  /**
-   * Placeholder for reporting a user.
-   * Only accessible by Admin/Other Admin.
-   * @param userId The ID of the user to report.
-   * @param userName The name of the user to report.
-   */
   const handleReportUser = useCallback((userId: string, userName: string) => {
     console.log('Report user:', userName);
-    Alert.alert('Report User', `Functionality to report user "${userName}" not implemented.`);
-    // In a real app, this would open a form to specify report details.
+    Alert.alert('Report User', `Functionality to report user "${userName}" not implemented in backend.`);
   }, []);
 
-  /**
-   * Placeholder for muting/banning a user.
-   * Only accessible by Admin.
-   * @param userId The ID of the user to mute/ban.
-   * @param userName The name of the user to mute/ban.
-   */
   const handleMuteBanUser = useCallback((userId: string, userName: string) => {
     console.log('Mute/Ban user:', userName);
-    Alert.alert('Mute/Ban User', `Functionality to mute/ban user "${userName}" not implemented.`);
-    // In a real app, this would trigger backend moderation actions.
+    Alert.alert('Mute/Ban User', `Functionality to mute/ban user "${userName}" not implemented in backend.`);
   }, []);
 
-  /**
-   * Helper function to get the role badge style dynamically.
-   * @param role The user's role.
-   * @returns The corresponding StyleSheet style object.
-   */
   const getRoleBadgeStyle = useCallback((role: User['role']): ViewStyle => {
     switch (role) {
       case 'Admin': return styles.roleBadgeAdmin;
@@ -228,46 +339,47 @@ const ForumModeration = () => {
       case 'Player': return styles.roleBadgePlayer;
       case 'Supporter': return styles.roleBadgeSupporter;
       case 'Fan': return styles.roleBadgeFan;
-      case 'Unknown': return {}; // No specific badge for unknown
-      default: return {}; // Fallback
+      case 'Unknown': return {};
+      default: return {};
     }
   }, []);
 
   // Determine if the current logged-in user can moderate
   const canModerate = useMemo(() => {
-    return CURRENT_USER_ROLE === 'Admin' || CURRENT_USER_ROLE === 'Other Admin';
-  }, [CURRENT_USER_ROLE]);
-
+    return currentUserData?.role === 'Admin' || currentUserData?.role === 'Other Admin';
+  }, [currentUserData]);
 
   const renderMessage = useCallback(({ item }: { item: ForumMessage }) => {
-    const isCurrentUser = item.senderId === CURRENT_USER_ID;
-    // Safely access senderInfo. If senderId is 'admin' (not in DUMMY_USERS), use item's name/avatar.
-    const senderInfo = DUMMY_USERS[item.senderId] || { name: item.senderName, avatar: item.senderAvatar, role: 'Unknown' as User['role'] };
+    const isCurrentUser = item.senderId === currentUserId; // Use currentUserId state
+    const senderRole = item.senderRole || 'Unknown'; // Ensure senderRole is accessible
 
-    // Construct the moderation actions array
-    const moderationActions: AlertButton[] = [
-      { text: 'Edit Message', onPress: () => handleEditMessage(item) },
-      { text: 'Delete Message', onPress: () => handleDeleteMessage(item.id), style: 'destructive' },
-      { text: 'Report User', onPress: () => handleReportUser(item.senderId, item.senderName) },
-    ];
+    const moderationActions: AlertButton[] = [];
 
-    // Conditionally add the Mute/Ban User button for Admin
-    if (CURRENT_USER_ROLE === 'Admin') {
+    // Only allow edit/delete if the current user is an admin/other admin OR the sender of the message
+    if ((canModerate || isCurrentUser) && (item.senderId === currentUserId || canModerate)) {
+        moderationActions.push({ text: 'Edit Message', onPress: () => handleEditMessage(item) });
+        moderationActions.push({ text: 'Delete Message', onPress: () => handleDeleteMessage(item.id), style: 'destructive' });
+    }
+
+    if (canModerate && !isCurrentUser) {
+        moderationActions.push({ text: 'Report User', onPress: () => handleReportUser(item.senderId, item.senderName) });
+    }
+
+    if (currentUserData?.role === 'Admin' && !isCurrentUser) {
       moderationActions.push({ text: 'Mute/Ban User', onPress: () => handleMuteBanUser(item.senderId, item.senderName), style: 'destructive' });
     }
 
-    // Add the Cancel button last
-    moderationActions.push({ text: 'Cancel', style: 'cancel' });
-
+    if (moderationActions.length > 0) {
+        moderationActions.push({ text: 'Cancel', style: 'cancel' });
+    }
 
     return (
       <View style={[
         styles.messageContainer,
         isCurrentUser ? styles.currentUserMessageContainer : styles.otherUserMessageContainer,
       ]}>
-        {/* Avatar for all users (including current user for moderation context if desired) */}
         <Image
-          source={{ uri: item.senderAvatar || 'https://placehold.co/40x40/CCCCCC/FFFFFF?text=?' }} // Fallback avatar
+          source={{ uri: item.senderAvatar || 'https://placehold.co/40x40/CCCCCC/FFFFFF?text=?' }}
           style={[
             styles.avatar,
             isCurrentUser ? styles.currentUserAvatar : styles.otherUserAvatar,
@@ -280,13 +392,12 @@ const ForumModeration = () => {
             isCurrentUser ? styles.currentUserSenderHeader : styles.otherUserSenderHeader,
           ]}>
             <Text style={styles.senderName}>{item.senderName}</Text>
-            {/* Display role badge if known and not 'Unknown' */}
-            {senderInfo.role !== 'Unknown' && (
+            {senderRole !== 'Unknown' && (
               <View style={[
                 styles.roleBadge,
-                getRoleBadgeStyle(senderInfo.role),
+                getRoleBadgeStyle(senderRole),
               ]}>
-                <Text style={styles.roleBadgeText}>{senderInfo.role}</Text>
+                <Text style={styles.roleBadgeText}>{senderRole}</Text>
               </View>
             )}
           </View>
@@ -306,8 +417,8 @@ const ForumModeration = () => {
           </Text>
         </View>
 
-        {/* Moderation Options Button (only for Admin/Other Admin) */}
-        {canModerate && (
+        {/* Moderation Options Button (only if actions are available) */}
+        {moderationActions.length > 1 && ( // >1 because 'Cancel' is always there if other actions exist
           <TouchableOpacity
             style={[
               styles.moderationOptionsButton,
@@ -316,7 +427,7 @@ const ForumModeration = () => {
             onPress={() => Alert.alert(
               'Moderation Actions',
               `Actions for message by ${item.senderName}`,
-              moderationActions // Pass the pre-constructed array
+              moderationActions
             )}
           >
             <Entypo name="dots-three-vertical" size={18} color="#999" />
@@ -324,32 +435,31 @@ const ForumModeration = () => {
         )}
       </View>
     );
-  }, [canModerate, CURRENT_USER_ID, CURRENT_USER_ROLE, getRoleBadgeStyle, handleDeleteMessage, handleEditMessage, handleReportUser, handleMuteBanUser]);
+  }, [canModerate, currentUserId, currentUserData, getRoleBadgeStyle, handleDeleteMessage, handleEditMessage, handleReportUser, handleMuteBanUser]);
+
 
   return (
     <KeyboardAvoidingView
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 60 : 0} // Adjust as needed
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 60 : 0}
     >
       {/* Header with Logo, Title, and Back Button */}
       <View style={styles.header}>
-        {/* Back button */}
         <TouchableOpacity
-          onPress={() => router.push('./../admin/Dashboard')} // Navigate back to Admin Dashboard
+          onPress={() => router.push('./../admin/Dashboard')} // Adjust navigation target as needed
           style={styles.backButton}
         >
           <MaterialIcons name="arrow-back" size={24} color="#fff" />
         </TouchableOpacity>
         <Image
-          source={require('../../../assets/images/logo.jpeg')} // Update this path
+          source={require('../../../assets/images/logo.jpeg')}
           style={styles.headerLogo}
           resizeMode="contain"
         />
         <Text style={styles.headerTitle}>Forum Discussion</Text>
       </View>
 
-      {/* Search Bar for Messages */}
       <TextInput
         style={styles.searchBar}
         placeholder="Search forum messages..."
@@ -358,8 +468,13 @@ const ForumModeration = () => {
         onChangeText={setSearchQuery}
       />
 
-      {/* Message List */}
-      {filteredMessages.length === 0 && searchQuery.length > 0 ? (
+      {/* Conditional rendering for messages or empty state */}
+      {loadingInitialData ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#6633FF" />
+          <Text style={styles.loadingText}>Loading forum...</Text>
+        </View>
+      ) : filteredMessages.length === 0 && searchQuery.length > 0 ? (
         <View style={styles.emptyListContainer}>
           <MaterialIcons name="search-off" size={60} color="#ccc" />
           <Text style={styles.emptyListText}>No messages found for your search.</Text>
@@ -378,31 +493,43 @@ const ForumModeration = () => {
           keyExtractor={(item) => item.id}
           renderItem={renderMessage}
           contentContainerStyle={styles.messageListContent}
-          inverted={false} // Set to true if you want chat to start from bottom
-          // Optional performance props for larger lists:
-          // initialNumToRender={10}
-          // maxToRenderPerBatch={5}
-          // windowSize={21}
+          inverted={false}
         />
       )}
 
-      {/* Input Area */}
-      <View style={styles.inputContainer}>
-        <TouchableOpacity style={styles.inputIcon}>
+      {/* Input container - disabled if not authenticated or data loading */}
+      <View style={[
+        styles.inputContainer,
+        (!currentUserId || !currentUserData || loadingInitialData) && { opacity: 0.6 } // Dim if not ready
+      ]}>
+        <TouchableOpacity style={styles.inputIcon} disabled={!currentUserId || !currentUserData || loadingInitialData}>
           <Entypo name="emoji-happy" size={24} color="#888" />
         </TouchableOpacity>
         <TextInput
           style={styles.textInput}
-          placeholder="Type your message..."
+          placeholder={
+            loadingInitialData
+              ? "Loading user data..."
+              : !currentUserId
+                ? "Please log in to send messages"
+                : !currentUserData
+                  ? "Your profile is missing. Cannot send."
+                  : "Type your message..."
+          }
           placeholderTextColor="#999"
           value={inputText}
           onChangeText={setInputText}
           multiline
+          editable={!!currentUserId && !!currentUserData && !loadingInitialData} // Only editable if user and data are ready
         />
-        <TouchableOpacity style={styles.inputIcon}>
+        <TouchableOpacity style={styles.inputIcon} disabled={!currentUserId || !currentUserData || loadingInitialData}>
           <MaterialIcons name="image" size={24} color="#888" />
         </TouchableOpacity>
-        <TouchableOpacity style={styles.sendButton} onPress={handleSend}>
+        <TouchableOpacity
+          style={styles.sendButton}
+          onPress={handleSend}
+          disabled={!currentUserId || !currentUserData || loadingInitialData || !inputText.trim()} // Disable if not ready or no text
+        >
           <MaterialIcons name="send" size={24} color="#fff" />
         </TouchableOpacity>
       </View>
@@ -413,13 +540,25 @@ const ForumModeration = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f0f2f5', // Light background for the chat screen
+    backgroundColor: '#f0f2f5',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+    minHeight: height * 0.5,
+  },
+  loadingText: {
+    fontSize: 16,
+    color: '#666',
+    marginTop: 10,
   },
   header: {
     paddingTop: 50,
     paddingBottom: 10,
     alignItems: 'center',
-    backgroundColor: '#fff', // White header background
+    backgroundColor: '#fff',
     borderBottomWidth: 1,
     borderBottomColor: '#eee',
     shadowColor: '#000',
@@ -427,20 +566,20 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 2,
     elevation: 3,
-    flexDirection: 'row', // Added for back button positioning
-    justifyContent: 'center', // Center content
+    flexDirection: 'row',
+    justifyContent: 'center',
   },
   backButton: {
-    position: 'absolute', // Position absolutely
+    position: 'absolute',
     left: 15,
-    top: 50, // Align with header padding
-    zIndex: 10, // Ensure it's above other elements
-    backgroundColor: '#007AFF', // Blue circle background
-    borderRadius: 20, // Make it a circle
-    padding: 8, // Padding inside the circle
+    top: 50,
+    zIndex: 10,
+    backgroundColor: '#007AFF', // Example color
+    borderRadius: 20,
+    padding: 8,
   },
   headerLogo: {
-    width: 60, // Smaller logo for the header
+    width: 60,
     height: 60,
     marginBottom: 5,
   },
@@ -448,7 +587,6 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
     color: '#333',
-    // Removed marginLeft to allow auto-centering with `justifyContent: 'center'`
   },
   searchBar: {
     backgroundColor: '#fff',
@@ -468,33 +606,33 @@ const styles = StyleSheet.create({
     paddingHorizontal: 15,
   },
   messageContainer: {
-    flexDirection: 'row', // Default to row for avatar and message
+    flexDirection: 'row',
     marginBottom: 10,
-    alignItems: 'flex-start', // Align items to the top
+    alignItems: 'flex-start',
   },
   currentUserMessageContainer: {
-    alignSelf: 'flex-end', // Align current user messages to the right
-    flexDirection: 'row-reverse', // Reverse order for current user to put avatar on left
+    alignSelf: 'flex-end',
+    flexDirection: 'row-reverse',
     alignItems: 'flex-start',
   },
   otherUserMessageContainer: {
-    alignSelf: 'flex-start', // Align other user messages to the left
+    alignSelf: 'flex-start',
   },
   avatar: {
     width: 30,
     height: 30,
     borderRadius: 15,
-    backgroundColor: '#ddd', // Placeholder background for avatar
+    backgroundColor: '#ddd',
   },
   currentUserAvatar: {
-    marginLeft: 8, // Space between avatar and bubble for current user
+    marginLeft: 8,
   },
   otherUserAvatar: {
-    marginRight: 8, // Space between avatar and bubble for other users
+    marginRight: 8,
   },
   messageContent: {
     flexDirection: 'column',
-    maxWidth: '75%', // Limit message bubble width
+    maxWidth: '75%',
   },
   senderHeader: {
     flexDirection: 'row',
@@ -502,12 +640,12 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   currentUserSenderHeader: {
-    justifyContent: 'flex-end', // Align sender name/role to the right for current user
-    marginRight: 5, // Small indent for readability
+    justifyContent: 'flex-end',
+    marginRight: 5,
   },
   otherUserSenderHeader: {
-    justifyContent: 'flex-start', // Align sender name/role to the left for other users
-    marginLeft: 5, // Small indent for readability
+    justifyContent: 'flex-start',
+    marginLeft: 5,
   },
   senderName: {
     fontSize: 12,
@@ -544,12 +682,12 @@ const styles = StyleSheet.create({
     elevation: 1,
   },
   currentUserBubble: {
-    backgroundColor: '#6633FF', // Blue for current user messages
-    borderBottomRightRadius: 2, // Sharper corner at the bottom right
+    backgroundColor: '#6633FF',
+    borderBottomRightRadius: 2,
   },
   otherUserBubble: {
-    backgroundColor: '#e0e0e0', // Gray for other user messages
-    borderBottomLeftRadius: 2, // Sharper corner at the bottom left
+    backgroundColor: '#e0e0e0',
+    borderBottomLeftRadius: 2,
   },
   currentUserText: {
     color: '#fff',
@@ -565,22 +703,22 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   currentUserTimestamp: {
-    alignSelf: 'flex-end', // Align current user timestamp to the right
-    marginRight: 5, // Small margin to align with bubble
+    alignSelf: 'flex-end',
+    marginRight: 5,
   },
   otherUserTimestamp: {
-    alignSelf: 'flex-start', // Align other user timestamp to the left
-    marginLeft: 5, // Small margin to align with bubble
+    alignSelf: 'flex-start',
+    marginLeft: 5,
   },
   moderationOptionsButton: {
     padding: 5,
-    alignSelf: 'flex-start', // Align with the top of the message
+    alignSelf: 'flex-start',
   },
   currentUserModerationButton: {
-    marginLeft: 5, // Space when current user message is on the right
+    marginLeft: 5,
   },
   otherUserModerationButton: {
-    marginRight: 5, // Space when other user message is on the left
+    marginRight: 5,
   },
   inputContainer: {
     flexDirection: 'row',
@@ -623,7 +761,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
-    minHeight: height * 0.5, // Ensure it takes up enough space
+    minHeight: height * 0.5,
   },
   emptyListText: {
     fontSize: 18,
