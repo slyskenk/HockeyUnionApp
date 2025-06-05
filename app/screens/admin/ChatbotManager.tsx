@@ -568,7 +568,7 @@ const styles = StyleSheet.create({
     paddingBottom: 10,
   },
   quickPromptButton: {
-    backgroundColor: '#F3ECFF', // Light purple
+    backgroundColor: '#eee', // Light purple
     borderRadius: 20,
     paddingVertical: 10,
     paddingHorizontal: 15,
