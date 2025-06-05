@@ -1,7 +1,10 @@
 import { MaterialCommunityIcons, MaterialIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import { onAuthStateChanged } from 'firebase/auth';
+import { doc, getDoc } from 'firebase/firestore';
 import React, { useEffect, useState } from 'react';
 import {
+  ActivityIndicator,
   Dimensions,
   Image,
   Modal,
@@ -10,11 +13,8 @@ import {
   Text,
   TouchableOpacity,
   View,
-  ActivityIndicator,
 } from 'react-native';
 import { auth, db } from '../../../firebase/firebase'; // ✅ Adjust path if needed
-import { doc, getDoc } from 'firebase/firestore';
-import { onAuthStateChanged } from 'firebase/auth';
 
 const { width } = Dimensions.get('window');
 const screenPaddingHorizontal = 20;
@@ -115,8 +115,7 @@ const DashboardScreen = () => {
         </TouchableOpacity>
       </View>
 
-      {/* Welcome Text */}
-      <Text style={styles.welcomeText}>Welcome Admin</Text>
+     
 
       {loadingName ? (
         <ActivityIndicator size="small" color="#333" style={{ marginBottom: 30 }} />
