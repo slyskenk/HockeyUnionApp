@@ -10,6 +10,7 @@ import MyTeam from './MyTeam';
 import News from './News';
 import PollsVoting from './PollsVoting';
 import Profile from './Profile';
+import TrainingResources from './TrainingResources';
 import TrainingScheduleScreen from './TrainingScheduleScreen';
 
 
@@ -29,6 +30,7 @@ function PlayerTabs() {
       <Tab.Screen name="PollsVoting" component={PollsVoting} />
       <Tab.Screen name="Profile" component={Profile} />
       <Tab.Screen name="TrainingScheduleScreen" component={TrainingScheduleScreen} />
+      <Tab.Screen name="TrainingResources" component={TrainingResources} />
     </Tab.Navigator>
   );
 }
@@ -47,6 +49,7 @@ export default function PlayerNavigator() {
       <Stack.Screen name="PollsVoting" component={PollsVoting} />
       <Stack.Screen name = "Profile" component={Profile} />
       <Stack.Screen name="TrainingScheduleScreen" component={TrainingScheduleScreen} />
+      <Stack.Screen name="TrainingResources" component={TrainingResources}/>
     </Stack.Navigator>
   );
 }
