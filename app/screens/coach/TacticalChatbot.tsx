@@ -375,6 +375,7 @@ const styles = StyleSheet.create({
     width: 50,
     height: 50,
     marginHorizontal: 10,
+    borderRadius: 30,
   },
   headerTitle: {
     fontSize: 18,

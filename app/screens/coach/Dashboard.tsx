@@ -1,9 +1,9 @@
-// app/screens/coach/Dashboard.tsx (Updated - Direct Messages removed)
+// app/screens/coach/Dashboard.tsx
 
 import { MaterialIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Dimensions,
   Image,
@@ -14,7 +14,13 @@ import {
   Text,
   TouchableOpacity,
   View,
+  ActivityIndicator,
 } from 'react-native';
+
+// 🔥 Firebase Imports
+import { onAuthStateChanged } from 'firebase/auth';
+import { doc, getDoc } from 'firebase/firestore';
+import { auth, db } from '../../../firebase/firebase'; // ✅ Adjust path if needed
 
 const { width, height } = Dimensions.get('window');
 
@@ -24,9 +30,7 @@ interface DashboardRole {
   route: string;
 }
 
-// --- Dummy Data ---
-
-const COACH_NAME = 'Coach John Doe';
+// --- Dummy Data (COACH_NAME will be dynamic now) ---
 const COACH_TEAM = 'Desert Scorpions (Men)';
 
 const DUMMY_FIXTURES = [
@@ -78,47 +82,82 @@ const CoachDashboard = () => {
     DASHBOARD_ROLES.find(role => role.label === 'Coach Dashboard') || DASHBOARD_ROLES[0]
   );
 
+  // New state for coach's name and loading indicator
+  const [coachName, setCoachName] = useState<string>('');
+  const [loadingCoachName, setLoadingCoachName] = useState(true);
+
+  // Effect to fetch coach's name from Firebase
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        try {
+          const userDocRef = doc(db, 'users', user.uid);
+          const userDocSnap = await getDoc(userDocRef);
+
+          if (userDocSnap.exists()) {
+            const userData = userDocSnap.data();
+            setCoachName(userData.name || 'Coach'); // Set name from Firestore, fallback to 'Coach'
+          } else {
+            setCoachName('Coach'); // User doc not found, fallback
+          }
+        } catch (error) {
+          console.error('Error fetching coach name:', error);
+          setCoachName('Coach'); // Error fetching, fallback
+        } finally {
+          setLoadingCoachName(false); // Stop loading regardless of success/failure
+        }
+      } else {
+        setCoachName(''); // No user, clear name
+        setLoadingCoachName(false); // Stop loading
+        // Optionally, redirect to login if no user is found
+        // router.replace('/screens/auth/login');
+      }
+    });
+
+    return unsubscribe; // Cleanup the listener on component unmount
+  }, []); // Run once on component mount
+
   const handleRoleChange = (role: DashboardRole) => {
     setCurrentRole(role);
     setShowRoleSelector(false);
     // Cast to any to bypass strict type checking for `router.push`
-    router.push(role.route as any); // FIX APPLIED HERE
+    router.push(role.route as any);
   };
 
   // Navigation functions
   const handleViewDetailedStats = () => {
     console.log('Navigating to Player Analytics/Team Stats');
-    router.push('./../coach/PlayerAnalytics' as any); // FIX APPLIED HERE
+    router.push('./../coach/PlayerAnalytics' as any);
   };
 
   const handleViewFullSchedule = () => {
     console.log('Navigating to Events Editor (Fixtures)');
-    router.push('./../coach/EventsEditor' as any); // FIX APPLIED HERE
+    router.push('./../coach/EventsEditor' as any);
   };
 
   const handleManagePlayers = () => {
     console.log('Navigating to Roster Manager');
-    router.push('./../coach/RosterManager' as any); // FIX APPLIED HERE
+    router.push('./../coach/RosterManager' as any);
   };
 
   const handleViewTrainingPlan = () => {
     console.log('Navigating to TrainingPlanner');
-    router.push('./../coach/TrainingPlanner' as any); // FIX APPLIED HERE
+    router.push('./../coach/TrainingPlanner' as any);
   };
 
   const handleViewAllAnnouncements = () => {
     console.log('Navigating to News Editor (Announcements)');
-    router.push('./../coach/NewsEditor' as any); // FIX APPLIED HERE
+    router.push('./../coach/NewsEditor' as any);
   };
 
   const handleGoToTeamChat = () => {
     console.log('Navigating to Tactical Chatbot or dedicated chat');
-    router.push('./../coach/TacticalChatbot' as any); // FIX APPLIED HERE
+    router.push('./../coach/TacticalChatbot' as any);
   };
 
   const handleGoToForum = () => {
     console.log('Navigating to Forum');
-    router.push('./../coach/Forum' as any); // FIX APPLIED HERE
+    router.push('./../coach/Forum' as any);
   };
 
   return (
@@ -135,7 +174,15 @@ const CoachDashboard = () => {
           style={styles.headerLogo}
           resizeMode="contain"
         />
-  
+
+        <View style={styles.headerTextContainer}>
+          <Text style={styles.welcomeText}>Welcome, Coach</Text>
+          {loadingCoachName ? (
+            <ActivityIndicator size="small" color="#fff" />
+          ) : (
+            <Text style={styles.headerTitle}>{coachName}</Text>
+          )}
+        </View>
 
         {/* Role Selector Toggle */}
         <TouchableOpacity
@@ -318,10 +365,11 @@ const styles = StyleSheet.create({
   headerLogo: {
     width: 60,
     height: 60,
+    borderRadius: 30, // Made circular
     marginRight: 15,
   },
   headerTextContainer: {
-    flex: 1,
+    flex: 1, // Allows the text to take up available space
     marginRight: 10,
   },
   welcomeText: {
@@ -329,6 +377,7 @@ const styles = StyleSheet.create({
     color: '#fff',
     opacity: 0.8,
   },
+
   headerTitle: {
     fontSize: 24,
     fontWeight: 'bold',

@@ -539,6 +539,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     marginRight: 10,
+    borderRadius: 30,
   },
   headerTitle: {
     fontSize: 22,
