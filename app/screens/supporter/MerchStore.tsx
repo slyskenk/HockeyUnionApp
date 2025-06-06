@@ -24,14 +24,14 @@ const { width } = Dimensions.get('window');
 
 // --- Product Data in NAD ---
 const allProducts = [
-  { id: '1', name: 'Hockey Cap', price: 200.00, category: 'Caps', image: 'https://picsum.photos/seed/hockeycap/200/200' },
-  { id: '2', name: 'Team Shorts', price: 300.00, category: 'Shorts', image: 'https://picsum.photos/seed/hockeyshorts/200/200' },
-  { id: '3', name: 'Official Shirt', price: 350.00, category: 'Shirts', image: 'https://picsum.photos/seed/hockeyshirtt/200/200' },
-  { id: '4', name: 'Team Anthem', price: 50.00, category: 'Songs', image: 'https://picsum.photos/seed/hockeyanthem/200/200' },
-  { id: '5', name: 'Hockey Stick', price: 800.00, category: 'Equipment', image: 'https://picsum.photos/seed/hockeystick/200/200' },
-  { id: '6', name: 'Puck Set', price: 150.00, category: 'Equipment', image: 'https://picsum.photos/seed/puckset/200/200' },
-  { id: '7', name: 'Goalie Gloves', price: 700.00, category: 'Equipment', image: 'https://picsum.photos/seed/goaliegloves/200/200' },
-  { id: '8', name: 'Fan Scarf', price: 200.00, category: 'Accessories', image: 'https://picsum.photos/seed/fanscarf/200/200' },
+  { id: '1', name: 'Hockey Cap', price: 200.00, category: 'Caps', image: 'https://media.istockphoto.com/id/526131500/photo/hat-on-white-background.jpg?s=1024x1024&w=is&k=20&c=E_qmUcZyH1hbfK3xjt7jZtGaCu0_y1mEKIiyOvuHzG4=' },
+  { id: '2', name: 'Team Shorts', price: 300.00, category: 'Shorts', image: 'https://media.istockphoto.com/id/1292428285/photo/blank-black-women-sport-shorts-mockup-different-views.jpg?s=1024x1024&w=is&k=20&c=b3Ma1imqshGuN3Uu59DdjJP_nLK322XkfOymH83II64=' },
+  { id: '3', name: 'Official Shirt', price: 350.00, category: 'Shirts', image: 'https://media.istockphoto.com/id/699857280/photo/black-polo-shirt-clothes.jpg?s=1024x1024&w=is&k=20&c=dnzNoC2DlXKgXmQF34a03JdhGBoEAy1-XaFiR151z84=' },
+  { id: '4', name: 'Team Anthem', price: 50.00, category: 'Songs', image: 'https://media.istockphoto.com/id/1251422928/photo/womens-ice-hockey-team-portrait.jpg?s=1024x1024&w=is&k=20&c=S-AL_KixNs3TeRLf0-W8IgisgF8WAfTitWZoyDlSh4o=' },
+  { id: '5', name: 'Hockey Stick', price: 800.00, category: 'Equipment', image: 'https://media.istockphoto.com/id/1137319987/photo/ice-hockey.jpg?s=1024x1024&w=is&k=20&c=YpsxH8Gc8l9TIFNPLa9PtXdKuB97eF65KHmL0OyUMG4=' },
+  { id: '6', name: 'Puck Set', price: 150.00, category: 'Equipment', image: 'https://media.istockphoto.com/id/1142616789/photo/hockey-puck.jpg?s=1024x1024&w=is&k=20&c=qYLGtRdLPp_8OK3e5396j5iGPaKvnuJM-hkxcB_F7oc=' },
+  { id: '7', name: 'Goalie Gloves', price: 700.00, category: 'Equipment', image: 'https://media.istockphoto.com/id/1263264956/photo/pink-and-black-goalkeeper-glove-isolated-on-white.jpg?s=1024x1024&w=is&k=20&c=1KJIdCiXaYzJCDKsFEQg-0GvSSrbQgxLhDlQ4j9fjGk=' },
+  { id: '8', name: 'Fan Scarf', price: 200.00, category: 'Accessories', image: 'https://media.istockphoto.com/id/693319422/photo/rear-view-shot-of-teenage-soccer-fan-holding-scarf.jpg?s=1024x1024&w=is&k=20&c=H5dOE8vcEfPc3Zt9zuHFGVlIDAMcHAbDot23gW5epm8=' },
 ];
 
 const categories = ['All', 'Caps', 'Shorts', 'Shirts', 'Songs', 'Equipment', 'Accessories'];
