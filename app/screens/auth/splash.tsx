@@ -1,13 +1,14 @@
 import React, { useEffect, useRef } from 'react';
 import {
-  ActivityIndicator,
   Animated,
   StyleSheet,
   View,
   Text,
+  TouchableOpacity,
 } from 'react-native';
 import LottieView from 'lottie-react-native';
 import { useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 
 export default function SplashScreen() {
   const router = useRouter();
@@ -48,12 +49,14 @@ export default function SplashScreen() {
       ]),
     ]).start();
 
-    // Navigate to login after a short delay (e.g., 3 seconds)
+    // Optional auto-navigation (commented out)
+    /*
     const timeout = setTimeout(() => {
       router.replace('/screens/auth/login');
     }, 3000);
 
     return () => clearTimeout(timeout);
+    */
   }, []);
 
   return (
@@ -90,7 +93,23 @@ export default function SplashScreen() {
         Hockey Union
       </Animated.Text>
 
-      <ActivityIndicator size="large" color="#007AFF" style={{ marginTop: 20 }} />
+      <View style={styles.buttonContainer}>
+        <TouchableOpacity
+          style={[styles.button, styles.shadow]}
+          onPress={() => router.push('/screens/auth/login')}
+        >
+          <Ionicons name="log-in-outline" size={20} color="#fff" />
+          <Text style={styles.buttonText}>Login</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.button, styles.signupButton, styles.shadow]}
+          onPress={() => router.push('/screens/auth/signup')}
+        >
+          <Ionicons name="person-add-outline" size={20} color="#fff" />
+          <Text style={styles.buttonText}>Sign Up</Text>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 }
@@ -101,6 +120,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: '#ffffff',
+    paddingHorizontal: 20,
   },
   logo: {
     width: 120,
@@ -116,5 +136,37 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginTop: 10,
     color: '#1C1C1E',
+  },
+  buttonContainer: {
+    flexDirection: 'row',
+    marginTop: 30,
+    gap: 20,
+  },
+  button: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#007AFF',
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 25,
+  },
+  signupButton: {
+    backgroundColor: '#34C759',
+  },
+  buttonText: {
+    color: '#fff',
+    fontWeight: '600',
+    fontSize: 16,
+    marginLeft: 8,
+  },
+  shadow: {
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 3.84,
+    elevation: 5,
   },
 });

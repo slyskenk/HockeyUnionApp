@@ -1,9 +1,7 @@
-// Import Firebase modules
 import { initializeApp } from 'firebase/app';
 import {
   initializeAuth,
-  getReactNativePersistence,
-  getAuth
+  getReactNativePersistence
 } from 'firebase/auth';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
@@ -19,7 +17,6 @@ import {
 } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 
-// Firebase configuration
 const firebaseConfig = {
   apiKey: 'AIzaSyA-Z-7mzFScX-BTDD85ShkGGL6iavxeIOE',
   authDomain: 'hockey-union.firebaseapp.com',
@@ -29,19 +26,16 @@ const firebaseConfig = {
   appId: '1:163997337297:web:785da756306ed75686a7f0'
 };
 
-// Initialize Firebase app
 const app = initializeApp(firebaseConfig);
 
-// Initialize Auth with persistence for React Native
+// IMPORTANT: Use AsyncStorage persistence here to REMEMBER the user after app restarts
 const auth = initializeAuth(app, {
-  persistence: getReactNativePersistence(AsyncStorage)
+  persistence: getReactNativePersistence(AsyncStorage),
 });
 
-// Initialize Firestore and Storage
 const db = getFirestore(app);
 const storage = getStorage(app);
 
-// Export everything you need
 export {
   app,
   auth,
