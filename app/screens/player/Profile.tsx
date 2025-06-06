@@ -1,9 +1,10 @@
-import { Ionicons, MaterialIcons } from '@expo/vector-icons'; // Import MaterialIcons for the camera icon
-import * as ImagePicker from 'expo-image-picker'; // Import ImagePicker
+import { Ionicons, MaterialIcons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import React, { useState } from 'react'; // Import useState
+import React, { useEffect, useState } from 'react'; // Import useEffect
 import {
+  ActivityIndicator, // Import ActivityIndicator for loading state
   Alert,
   Image,
   Linking,
@@ -15,15 +16,63 @@ import {
   View,
 } from 'react-native';
 
+// 🔥 Firebase Imports
+import { onAuthStateChanged } from 'firebase/auth';
+import { doc, getDoc } from 'firebase/firestore';
+import { auth, db } from '../../../firebase/firebase'; // ✅ Adjust path if needed
+
 export default function PlayerProfileScreen() {
   const router = useRouter();
 
   const coachPhoneNumber = 'tel:+1234567890'; // Replace with the actual coach's phone number
 
-  // State for the player's profile image
+  // State for the player's profile image and other details
   const [profileImage, setProfileImage] = useState<string | null>(
     'https://images.unsplash.com/photo-1617019114583-0b83f9c09d3d' // Initial dummy image
   );
+  const [playerName, setPlayerName] = useState<string>('Player Name'); // Default name
+  const [playerRole, setPlayerRole] = useState<string>('Role'); // e.g., "Forward"
+  const [playerJerseyNumber, setPlayerJerseyNumber] = useState<string>('#00'); // e.g., "#17"
+  const [loadingProfile, setLoadingProfile] = useState<boolean>(true);
+
+  // Effect to fetch player's name and other profile details from Firebase
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        try {
+          const userDocRef = doc(db, 'users', user.uid);
+          const userDocSnap = await getDoc(userDocRef);
+
+          if (userDocSnap.exists()) {
+            const userData = userDocSnap.data();
+            setPlayerName(userData.name || 'Player');
+            setPlayerRole(userData.role || 'Player'); // Assuming 'role' field exists
+            setPlayerJerseyNumber(userData.jerseyNumber ? `#${userData.jerseyNumber}` : '#00'); // Assuming 'jerseyNumber' field exists
+            // You can also fetch the profile image URI if stored in Firestore
+            if (userData.profileImage) {
+              setProfileImage(userData.profileImage);
+            }
+          } else {
+            console.log('No user document found for UID:', user.uid);
+            setPlayerName('Player Not Found');
+          }
+        } catch (error) {
+          console.error('Error fetching player profile:', error);
+          Alert.alert('Error', 'Failed to load player profile. Please try again.');
+        } finally {
+          setLoadingProfile(false);
+        }
+      } else {
+        // No user is logged in
+        setPlayerName('Guest Player');
+        setLoadingProfile(false);
+        // Optionally, redirect to login if no user is found
+        // router.replace('/screens/auth/login');
+      }
+    });
+
+    return unsubscribe; // Cleanup the listener on component unmount
+  }, []);
 
   const handleCallCoach = async () => {
     try {
@@ -58,6 +107,8 @@ export default function PlayerProfileScreen() {
 
     if (!result.canceled) {
       setProfileImage(result.assets[0].uri); // Set the selected image URI as the profile image
+      // TODO: Implement image upload to Firebase Storage and update Firestore 'profileImage' field
+      Alert.alert('Image Selected', 'You can now upload this image to Firebase Storage.');
     }
   };
 
@@ -80,15 +131,21 @@ export default function PlayerProfileScreen() {
       <View style={styles.profileSection}>
         <TouchableOpacity style={styles.avatarContainer} onPress={pickImage}>
           <Image
-            source={{ uri: profileImage || 'https://placehold.co/120x120/CCCCCC/FFFFFF?text=No+Image' }} // Use profileImage state, fallback to placeholder
+            source={{ uri: profileImage || 'https://placehold.co/120x120/CCCCCC/FFFFFF?text=No+Image' }}
             style={styles.avatar}
           />
           <View style={styles.editAvatarOverlay}>
             <MaterialIcons name="camera-alt" size={30} color="#fff" />
           </View>
         </TouchableOpacity>
-        <Text style={styles.name}>Jason Carter</Text>
-        <Text style={styles.position}>Forward | #17</Text>
+        {loadingProfile ? (
+          <ActivityIndicator size="large" color="#2E5AAC" style={{ marginTop: 10 }} />
+        ) : (
+          <>
+            <Text style={styles.name}>{playerName}</Text>
+            <Text style={styles.position}>{playerRole} | {playerJerseyNumber}</Text>
+          </>
+        )}
       </View>
 
       {/* Stats Section */}
@@ -114,7 +171,7 @@ export default function PlayerProfileScreen() {
       <View style={styles.aboutSection}>
         <Text style={styles.sectionTitle}>About Me</Text>
         <Text style={styles.aboutText}>
-          Passionionate hockey player with a strong offensive mindset and dedication to teamwork. Always striving for
+          Passionate hockey player with a strong offensive mindset and dedication to teamwork. Always striving for
           improvement and bringing energy to the ice every game.
         </Text>
       </View>
@@ -168,13 +225,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 24,
   },
-  // New styles for avatar and edit overlay
   avatarContainer: {
     width: 120,
     height: 120,
     borderRadius: 60,
     marginBottom: 12,
-    backgroundColor: '#ccc', // Placeholder background
+    backgroundColor: '#ccc',
     justifyContent: 'center',
     alignItems: 'center',
   },

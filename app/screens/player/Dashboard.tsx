@@ -1,13 +1,14 @@
 // app/screens/player/Dashboard.tsx
 
-import { MaterialIcons } from '@expo/vector-icons'; // Added MaterialCommunityIcons
+import { MaterialIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import React, { useState } from 'react'; // Added useState
+import React, { useEffect, useState } from 'react'; // Added useEffect
 import {
+  ActivityIndicator, // Added ActivityIndicator
   Dimensions,
   Image,
-  Modal, // Added Modal
+  Modal,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -15,6 +16,11 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+
+// 🔥 Firebase Imports
+import { onAuthStateChanged } from 'firebase/auth';
+import { doc, getDoc } from 'firebase/firestore';
+import { auth, db } from '../../../firebase/firebase'; // ✅ Adjust path if needed
 
 const { width, height } = Dimensions.get('window');
 
@@ -24,11 +30,10 @@ interface DashboardRole {
   route: string;
 }
 
-// --- Dummy Data (Player Specific) ---
+// --- Dummy Data (Player Specific - PLAYER_NAME will be dynamic) ---
 
-const PLAYER_NAME = 'Alex "The Blitzer" Smith';
 const PLAYER_TEAM = 'Desert Scorpions (Men)';
-const PLAYER_JERSEY_NUMBER = 7;
+const PLAYER_JERSEY_NUMBER = 7; // This could also be fetched from Firestore if stored
 
 const DUMMY_PLAYER_STATS = {
   goals: 15,
@@ -65,6 +70,41 @@ const PlayerDashboard = () => {
   const [currentRole, setCurrentRole] = useState<DashboardRole>(
     DASHBOARD_ROLES.find(role => role.label === 'Player Dashboard') || DASHBOARD_ROLES[0]
   );
+
+  // New state for player's name and loading indicator
+  const [playerName, setPlayerName] = useState<string>('');
+  const [loadingPlayerName, setLoadingPlayerName] = useState(true);
+
+  // Effect to fetch player's name from Firebase
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        try {
+          const userDocRef = doc(db, 'users', user.uid);
+          const userDocSnap = await getDoc(userDocRef);
+
+          if (userDocSnap.exists()) {
+            const userData = userDocSnap.data();
+            setPlayerName(userData.name || 'Player'); // Set name from Firestore, fallback to 'Player'
+          } else {
+            setPlayerName('Player'); // User doc not found, fallback
+          }
+        } catch (error) {
+          console.error('Error fetching player name:', error);
+          setPlayerName('Player'); // Error fetching, fallback
+        } finally {
+          setLoadingPlayerName(false); // Stop loading regardless of success/failure
+        }
+      } else {
+        setPlayerName(''); // No user, clear name
+        setLoadingPlayerName(false); // Stop loading
+        // Optionally, redirect to login if no user is found
+        // router.replace('/screens/auth/login');
+      }
+    });
+
+    return unsubscribe; // Cleanup the listener on component unmount
+  }, []); // Run once on component mount
 
   const handleRoleChange = (role: DashboardRole) => {
     setCurrentRole(role);
@@ -129,12 +169,19 @@ const PlayerDashboard = () => {
           resizeMode="contain"
         />
         <View style={styles.headerTextContainer}>
-          <Text style={styles.welcomeText}>Hello, {PLAYER_NAME}!</Text>
-          <Text style={styles.headerTitle}>Player Dashboard</Text>
+          <Text style={styles.welcomeText}>Welcome,</Text>
+          {loadingPlayerName ? (
+            <ActivityIndicator size="small" color="#fff" />
+          ) : (
+            <Text style={styles.headerTitle}>{playerName}</Text>
+          )}
         </View>
 
-        {/* Role Selector Toggle */}
-    
+        {/* Role Selector Toggle (if you want to keep it for players) */}
+        {/* <TouchableOpacity style={styles.roleSelectorToggle} onPress={() => setShowRoleSelector(true)}>
+          <Text style={styles.currentRoleText}>{currentRole.label.replace(' Dashboard', '')}</Text>
+          <MaterialIcons name="arrow-drop-down" size={24} color="#fff" />
+        </TouchableOpacity> */}
       </LinearGradient>
 
       <ScrollView contentContainerStyle={styles.scrollViewContent}>
@@ -194,6 +241,7 @@ const PlayerDashboard = () => {
           </View>
           <View style={styles.teamSnapshot}>
             <Text style={styles.teamSnapshotText}>You are part of the <Text style={{ fontWeight: 'bold' }}>{PLAYER_TEAM}</Text>.</Text>
+            {/* If jersey number is static or fetched from user data, you can display it here */}
             <Text style={styles.teamSnapshotText}>Jersey Number: <Text style={{ fontWeight: 'bold', color: '#007AFF' }}>#{PLAYER_JERSEY_NUMBER}</Text></Text>
           </View>
           <View style={styles.viewAllButton}>
@@ -307,6 +355,7 @@ const styles = StyleSheet.create({
     width: 60,
     height: 60,
     marginRight: 15,
+    borderRadius: 30, // Made circular, consistent with coach dashboard
   },
   headerTextContainer: {
     flex: 1, // Allows text to take available space
@@ -367,8 +416,6 @@ const styles = StyleSheet.create({
     color: '#333',
     marginLeft: 10,
   },
-
-  // My Performance Styles (adapted from Team Overview)
   statsRow: {
     flexDirection: 'row',
     justifyContent: 'space-around',
@@ -394,7 +441,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingVertical: 10,
     borderRadius: 10,
-    backgroundColor: '#E6F3FA', // Light blue background
+    backgroundColor: '#E6F3FA',
   },
   fullStatsButtonText: {
     color: '#007AFF',
@@ -402,8 +449,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginRight: 5,
   },
-
-  // Events Styles (adapted from Fixtures)
   fixtureItem: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -416,7 +461,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: 'bold',
     color: '#333',
-    width: 80, // Fixed width for date
+    width: 80,
   },
   fixtureDetails: {
     flex: 1,
@@ -445,19 +490,15 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginRight: 5,
   },
-
-  // Team Snapshot Styles (new)
   teamSnapshot: {
     marginBottom: 15,
-    alignItems: 'center',
+    paddingVertical: 8,
   },
   teamSnapshotText: {
-    fontSize: 16,
+    fontSize: 15,
     color: '#333',
     marginBottom: 5,
   },
-
-  // Training Schedule Styles (adapted from Training Schedule)
   trainingDetails: {
     marginBottom: 15,
   },
@@ -472,10 +513,8 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#666',
     fontStyle: 'italic',
-    marginTop: 10,
+    marginTop: 5,
   },
-
-  // Announcements Styles (reused)
   announcementItem: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -489,8 +528,6 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: '#333',
   },
-
-  // Communication & Engagement Hub Styles (reused and expanded)
   communicationButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -511,14 +548,13 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginLeft: 10,
   },
-  // Modal specific styles
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.4)',
     justifyContent: 'flex-start',
     alignItems: 'flex-end',
-    paddingTop: 80, // Adjust this to align with your header's height
-    paddingRight: 20, // Adjust this to align with your header's padding
+    paddingTop: 80,
+    paddingRight: 20,
   },
   modalContent: {
     backgroundColor: '#fff',
