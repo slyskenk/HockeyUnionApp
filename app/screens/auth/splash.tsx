@@ -1,15 +1,15 @@
 
+import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
+import LottieView from 'lottie-react-native';
 import React, { useEffect, useRef } from 'react';
 import {
   Animated,
   StyleSheet,
-  View,
   Text,
   TouchableOpacity,
+  View,
 } from 'react-native';
-import LottieView from 'lottie-react-native';
-import { useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
 
 export default function SplashScreen() {
   const router = useRouter();
@@ -90,7 +90,7 @@ export default function SplashScreen() {
       <View style={styles.buttonContainer}>
         <TouchableOpacity
           style={[styles.button, styles.shadow]}
-          onPress={() => router.push('/screens/auth/login')}
+          onPress={() => router.push('/screens/auth/Login')}
         >
           <Ionicons name="log-in-outline" size={20} color="#fff" />
           <Text style={styles.buttonText}>Login</Text>
@@ -98,7 +98,7 @@ export default function SplashScreen() {
 
         <TouchableOpacity
           style={[styles.button, styles.signupButton, styles.shadow]}
-          onPress={() => router.push('/screens/auth/signup')}
+          onPress={() => router.push('/screens/auth/SignUp')}
         >
           <Ionicons name="person-add-outline" size={20} color="#fff" />
           <Text style={styles.buttonText}>Sign Up</Text>

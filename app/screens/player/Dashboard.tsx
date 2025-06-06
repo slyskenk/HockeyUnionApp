@@ -3,9 +3,10 @@
 import { MaterialIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import React, { useEffect, useState } from 'react'; // Added useEffect
+import React, { useEffect, useState } from 'react';
 import {
-  ActivityIndicator, // Added ActivityIndicator
+  ActivityIndicator,
+  Alert, // Import Alert for user feedback
   Dimensions,
   Image,
   Modal,
@@ -18,7 +19,7 @@ import {
 } from 'react-native';
 
 // 🔥 Firebase Imports
-import { onAuthStateChanged } from 'firebase/auth';
+import { onAuthStateChanged, signOut } from 'firebase/auth'; // Import signOut
 import { doc, getDoc } from 'firebase/firestore';
 import { auth, db } from '../../../firebase/firebase'; // ✅ Adjust path if needed
 
@@ -98,8 +99,8 @@ const PlayerDashboard = () => {
       } else {
         setPlayerName(''); // No user, clear name
         setLoadingPlayerName(false); // Stop loading
-        // Optionally, redirect to login if no user is found
-        // router.replace('/screens/auth/login');
+        // Redirect to login if no user is found
+        router.replace('/screens/auth/Login');
       }
     });
 
@@ -110,6 +111,17 @@ const PlayerDashboard = () => {
     setCurrentRole(role);
     setShowRoleSelector(false);
     router.push(role.route as any); // Cast to any to bypass strict type checking for `router.push`
+  };
+
+  const handleSignOut = async () => {
+    try {
+      await signOut(auth);
+      Alert.alert('Signed Out', 'You have been successfully signed out.');
+      router.replace('/screens/auth/Login'); // Redirect to login screen
+    } catch (error) {
+      console.error('Error signing out:', error);
+      Alert.alert('Sign Out Error', 'Failed to sign out. Please try again.');
+    }
   };
 
   // Navigation functions (Player specific)
@@ -177,11 +189,11 @@ const PlayerDashboard = () => {
           )}
         </View>
 
-        {/* Role Selector Toggle (if you want to keep it for players) */}
-        {/* <TouchableOpacity style={styles.roleSelectorToggle} onPress={() => setShowRoleSelector(true)}>
-          <Text style={styles.currentRoleText}>{currentRole.label.replace(' Dashboard', '')}</Text>
-          <MaterialIcons name="arrow-drop-down" size={24} color="#fff" />
-        </TouchableOpacity> */}
+        {/* Sign Out Button */}
+        <TouchableOpacity style={styles.signOutButton} onPress={handleSignOut}>
+          <MaterialIcons name="logout" size={24} color="#fff" />
+          <Text style={styles.signOutButtonText}>Sign Out</Text>
+        </TouchableOpacity>
       </LinearGradient>
 
       <ScrollView contentContainerStyle={styles.scrollViewContent}>
@@ -372,7 +384,23 @@ const styles = StyleSheet.create({
     color: '#fff',
     marginTop: 2,
   },
-  // New styles for the role selector toggle
+  // New style for the sign out button
+  signOutButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.2)', // Slightly transparent white
+    borderRadius: 20,
+    paddingVertical: 8,
+    paddingHorizontal: 15,
+    marginLeft: 10, // Added margin for spacing
+  },
+  signOutButtonText: {
+    marginLeft: 5,
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#fff', // White text for visibility on gradient
+  },
+  // Existing styles below this line (no changes to them)
   roleSelectorToggle: {
     flexDirection: 'row',
     alignItems: 'center',

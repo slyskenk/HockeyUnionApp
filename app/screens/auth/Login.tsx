@@ -1,15 +1,15 @@
+import { useRouter } from 'expo-router';
+import React, { useState } from 'react';
 import {
+  ActivityIndicator,
+  Alert,
   Image,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
   View,
-  Alert,
-  ActivityIndicator,
 } from 'react-native';
-import React, { useState } from 'react';
-import { useRouter } from 'expo-router';
 import SocialButtons from '../../../components/SocialButton';
 
 import { signInWithEmailAndPassword } from 'firebase/auth';
@@ -139,7 +139,7 @@ export default function LoginScreen() {
       <Text style={styles.orText}>or sign in with</Text>
       <SocialButtons />
 
-      <TouchableOpacity onPress={() => router.push('/screens/auth/signup')}>
+      <TouchableOpacity onPress={() => router.push('/screens/auth/SignUp')}>
         <Text style={styles.linkText}>
           Don't have an account?
           <Text style={styles.link}> SIGN UP</Text>

@@ -3,11 +3,13 @@
 import { MaterialIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import React, { useState } from 'react'; // Added useState
+import React, { useEffect, useState } from 'react'; // Added useEffect for auth state
 import {
+  ActivityIndicator, // Added ActivityIndicator for loading state
+  Alert, // Added Alert for sign out feedback
   Dimensions,
   Image,
-  Modal, // Added Modal
+  Modal,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -15,6 +17,11 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+
+// 🔥 Firebase Imports
+import { onAuthStateChanged, signOut } from 'firebase/auth'; // Import signOut and onAuthStateChanged
+import { doc, getDoc } from 'firebase/firestore'; // Import doc and getDoc
+import { auth, db } from '../../../firebase/firebase'; // ✅ Adjust path if needed
 
 const { width } = Dimensions.get('window');
 
@@ -26,7 +33,7 @@ interface DashboardRole {
 
 // --- Dummy Data for Supporters Dashboard ---
 
-const FAN_NAME = 'Hockey Fan'; // Could be personalized later
+// FAN_NAME will now be fetched from Firebase
 const TEAM_NAME = 'Desert Scorpions'; // Or the user's favorite team
 
 const DUMMY_UPCOMING_EVENTS = [
@@ -80,10 +87,57 @@ const SupportersDashboard = () => {
     DASHBOARD_ROLES.find(role => role.label === 'Supporter Dashboard') || DASHBOARD_ROLES[0]
   );
 
+  // New state for supporter's name and loading indicator
+  const [fanName, setFanName] = useState<string>('');
+  const [loadingFanName, setLoadingFanName] = useState(true);
+
+  // Effect to fetch supporter's name from Firebase and handle auth state
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        try {
+          const userDocRef = doc(db, 'users', user.uid);
+          const userDocSnap = await getDoc(userDocRef);
+
+          if (userDocSnap.exists()) {
+            const userData = userDocSnap.data();
+            setFanName(userData.name || 'Hockey Fan'); // Set name from Firestore, fallback to 'Hockey Fan'
+          } else {
+            setFanName('Hockey Fan'); // User doc not found, fallback
+          }
+        } catch (error) {
+          console.error('Error fetching fan name:', error);
+          setFanName('Hockey Fan'); // Error fetching, fallback
+        } finally {
+          setLoadingFanName(false); // Stop loading regardless of success/failure
+        }
+      } else {
+        setFanName(''); // No user, clear name
+        setLoadingFanName(false); // Stop loading
+        // Redirect to login if no user is found
+        router.replace('/screens/auth/Login');
+      }
+    });
+
+    return unsubscribe; // Cleanup the listener on component unmount
+  }, []); // Run once on component mount
+
+
   const handleRoleChange = (role: DashboardRole) => {
     setCurrentRole(role);
     setShowRoleSelector(false);
     router.push(role.route as any); // Cast to any to bypass strict type checking for `router.push`
+  };
+
+  const handleSignOut = async () => {
+    try {
+      await signOut(auth);
+      Alert.alert('Signed Out', 'You have been successfully signed out.');
+      router.replace('/screens/auth/Login'); // Redirect to login screen
+    } catch (error) {
+      console.error('Error signing out:', error);
+      Alert.alert('Sign Out Error', 'Failed to sign out. Please try again.');
+    }
   };
 
   // Navigation functions for supporters
@@ -142,12 +196,26 @@ const SupportersDashboard = () => {
           resizeMode="contain"
         />
         <View style={styles.headerTextContainer}>
-          <Text style={styles.welcomeText}>Welcome, {FAN_NAME}!</Text>
-          <Text style={styles.headerTitle}>Your {TEAM_NAME} Hub</Text>
+          <Text style={styles.welcomeText}>Welcome,</Text>
+          {loadingFanName ? (
+            <ActivityIndicator size="small" color="#fff" />
+          ) : (
+            <Text style={styles.headerTitle}>{fanName}!</Text>
+          )}
+          <Text style={styles.headerSubtitle}>Your {TEAM_NAME} Hub</Text> {/* Added a subtitle */}
         </View>
 
-        {/* Role Selector Toggle */}
-      
+        {/* Sign Out Button */}
+        <TouchableOpacity style={styles.signOutButton} onPress={handleSignOut}>
+          <MaterialIcons name="logout" size={24} color="#fff" />
+          <Text style={styles.signOutButtonText}>Sign Out</Text>
+        </TouchableOpacity>
+
+        {/* Removed Role Selector Toggle based on previous dashboard patterns unless explicitly needed */}
+        {/* <TouchableOpacity style={styles.roleSelectorToggle} onPress={() => setShowRoleSelector(true)}>
+          <Text style={styles.currentRoleText}>{currentRole.label.replace(' Dashboard', '')}</Text>
+          <MaterialIcons name="arrow-drop-down" size={24} color="#fff" />
+        </TouchableOpacity> */}
       </LinearGradient>
 
       <ScrollView contentContainerStyle={styles.scrollViewContent}>
@@ -370,7 +438,7 @@ const styles = StyleSheet.create({
   },
   headerTextContainer: {
     flex: 1,
-    marginRight: 10, // Space between text and toggle
+    marginRight: 10, // Space between text and button
   },
   welcomeText: {
     fontSize: 16,
@@ -385,7 +453,28 @@ const styles = StyleSheet.create({
     marginTop: 5,
     // fontFamily: 'Montserrat-Bold', // Example font family
   },
-  // New styles for the role selector toggle
+  headerSubtitle: { // Added style for a potential subtitle
+    fontSize: 14,
+    color: '#fff',
+    opacity: 0.7,
+  },
+  // New styles for the Sign Out button
+  signOutButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.2)', // Slightly transparent white
+    borderRadius: 20,
+    paddingVertical: 8,
+    paddingHorizontal: 15,
+    marginLeft: 10, // Added margin for spacing
+  },
+  signOutButtonText: {
+    marginLeft: 5,
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#fff', // White text for visibility on gradient
+  },
+  // Existing styles below this line
   roleSelectorToggle: {
     flexDirection: 'row',
     alignItems: 'center',

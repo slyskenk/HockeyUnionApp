@@ -6,6 +6,7 @@ import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert, // Import Alert for user feedback
   Dimensions,
   Image,
   Modal,
@@ -18,7 +19,7 @@ import {
 } from 'react-native';
 
 // 🔥 Firebase Imports
-import { onAuthStateChanged } from 'firebase/auth';
+import { onAuthStateChanged, signOut } from 'firebase/auth'; // Import signOut
 import { doc, getDoc } from 'firebase/firestore';
 import { auth, db } from '../../../firebase/firebase'; // ✅ Adjust path if needed
 
@@ -109,8 +110,8 @@ const CoachDashboard = () => {
       } else {
         setCoachName(''); // No user, clear name
         setLoadingCoachName(false); // Stop loading
-        // Optionally, redirect to login if no user is found
-        // router.replace('/screens/auth/login');
+        // Redirect to login if no user is found
+        router.replace('/screens/auth/Login');
       }
     });
 
@@ -122,6 +123,17 @@ const CoachDashboard = () => {
     setShowRoleSelector(false);
     // Cast to any to bypass strict type checking for `router.push`
     router.push(role.route as any);
+  };
+
+  const handleSignOut = async () => {
+    try {
+      await signOut(auth);
+      Alert.alert('Signed Out', 'You have been successfully signed out.');
+      router.replace('/screens/auth/Login'); // Redirect to login screen
+    } catch (error) {
+      console.error('Error signing out:', error);
+      Alert.alert('Sign Out Error', 'Failed to sign out. Please try again.');
+    }
   };
 
   // Navigation functions
@@ -184,8 +196,11 @@ const CoachDashboard = () => {
           )}
         </View>
 
-        {/* Role Selector Toggle */}
-        
+        {/* Sign Out Button */}
+        <TouchableOpacity style={styles.signOutButton} onPress={handleSignOut}>
+          <MaterialIcons name="logout" size={24} color="#fff" />
+          <Text style={styles.signOutButtonText}>Sign Out</Text>
+        </TouchableOpacity>
       </LinearGradient>
 
       <ScrollView contentContainerStyle={styles.scrollViewContent}>
@@ -348,7 +363,7 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    justifyContent: 'space-between', // Changed to space-between
     paddingTop: 50,
     paddingBottom: 20,
     paddingHorizontal: 20,
@@ -371,12 +386,27 @@ const styles = StyleSheet.create({
     color: '#fff',
     opacity: 0.8,
   },
-
   headerTitle: {
     fontSize: 24,
     fontWeight: 'bold',
     color: '#fff',
     marginTop: 2,
+  },
+  // New style for the sign out button
+  signOutButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.2)', // Slightly transparent white
+    borderRadius: 20,
+    paddingVertical: 8,
+    paddingHorizontal: 15,
+    marginLeft: 10, // Added margin for spacing
+  },
+  signOutButtonText: {
+    marginLeft: 5,
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#fff', // White text for visibility on gradient
   },
   roleSelectorToggle: {
     flexDirection: 'row',

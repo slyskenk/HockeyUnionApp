@@ -1,3 +1,4 @@
+import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
   Alert,
@@ -8,12 +9,11 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { Picker } from '@react-native-picker/picker';
+import DropDownPicker from 'react-native-dropdown-picker';
 import SocialButtons from '../../../components/SocialButton';
-import { useRouter } from 'expo-router';
 
 // 🔥 Firebase
-import { createUserWithEmailAndPassword } from 'firebase/auth';
+import { createUserWithEmailAndPassword, sendEmailVerification } from 'firebase/auth'; // Import sendEmailVerification
 import { doc, setDoc } from 'firebase/firestore';
 import { auth, db } from '../../../firebase/firebase';
 
@@ -24,10 +24,26 @@ export default function SignupScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [userType, setUserType] = useState<'Player' | 'Coach' | 'Admin' | 'Supporter'>('Player');
   const [loading, setLoading] = useState(false);
 
+  // Dropdown state
+  const [open, setOpen] = useState(false);
+  const [userType, setUserType] = useState('Player');
+  const [items, setItems] = useState([
+    { label: 'Player', value: 'Player' },
+    { label: 'Coach', value: 'Coach' },
+    { label: 'Admin', value: 'Admin' },
+    { label: 'Supporter', value: 'Supporter' },
+  ]);
+
   const handleSignup = async () => {
+    // Basic client-side email format validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      Alert.alert('Invalid Email', 'Please enter a valid email address format.');
+      return;
+    }
+
     if (password !== confirmPassword) {
       Alert.alert('Error', 'Passwords do not match.');
       return;
@@ -39,36 +55,45 @@ export default function SignupScreen() {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
 
+      // --- Send Email Verification ---
+      await sendEmailVerification(user);
+
       await setDoc(doc(db, 'users', user.uid), {
         uid: user.uid,
         name,
         email,
         role: userType,
         createdAt: new Date().toISOString(),
+        emailVerified: false, // Add a flag to track email verification status
       });
 
-      Alert.alert('Success', `Account created for ${email} as ${userType}`);
+      // Inform the user about the verification email
+      Alert.alert(
+        'Account Created! Please Verify Your Email',
+        `A verification email has been sent to ${email}. Please check your inbox (and spam folder) and click the link to verify your account before logging in.`
+      );
 
-      // ✅ Redirect to the correct dashboard
-      switch (userType) {
-        case 'Player':
-          router.replace('/screens/player/Dashboard');
-          break;
-        case 'Coach':
-          router.replace('/screens/coach/Dashboard');
-          break;
-        case 'Admin':
-          router.replace('/screens/admin/Dashboard');
-          break;
-        case 'Supporter':
-          router.replace('/screens/supporter/Dashboard');
-          break;
-        default:
-          router.replace('/screens/auth/login');
-      }
+      // Redirect after showing the alert
+      // Consider always redirecting to login to enforce verification
+      router.replace('/screens/auth/Login');
+
+      // Removed direct dashboard redirection here, as verification is now required
+      // You can implement checks on dashboard screens to ensure email is verified
+      // For example, in Dashboard useEffect, you can check auth.currentUser?.emailVerified
     } catch (error) {
-      const err = error as { message: string };
-      Alert.alert('Signup Error', err.message);
+      const err = error as { code?: string; message: string }; // Use 'code' for specific Firebase errors
+      let errorMessage = err.message;
+
+      // Handle specific Firebase errors for better user feedback
+      if (err.code === 'auth/email-already-in-use') {
+        errorMessage = 'This email address is already in use. Please try logging in or use a different email.';
+      } else if (err.code === 'auth/invalid-email') {
+        errorMessage = 'The email address is not valid.';
+      } else if (err.code === 'auth/weak-password') {
+        errorMessage = 'Password is too weak. Please choose a stronger password.';
+      }
+
+      Alert.alert('Signup Error', errorMessage);
     } finally {
       setLoading(false);
     }
@@ -115,19 +140,19 @@ export default function SignupScreen() {
       {/* Role Dropdown */}
       <View style={styles.dropdownWrapper}>
         <Text style={styles.dropdownLabel}>Select Role</Text>
-        <View style={styles.pickerContainer}>
-          <Picker
-            selectedValue={userType}
-            onValueChange={(itemValue) => setUserType(itemValue)}
-            style={styles.picker}
-            dropdownIconColor="#005D8F"
-          >
-            <Picker.Item label="Player" value="Player" />
-            <Picker.Item label="Coach" value="Coach" />
-            <Picker.Item label="Admin" value="Admin" />
-            <Picker.Item label="Supporter" value="Supporter" />
-          </Picker>
-        </View>
+        <DropDownPicker
+          open={open}
+          value={userType}
+          items={items}
+          setOpen={setOpen}
+          setValue={setUserType}
+          setItems={setItems}
+          placeholder="Select a role"
+          style={styles.dropdown}
+          dropDownContainerStyle={styles.dropdownContainer}
+          zIndex={1000} // Ensure dropdown is above other elements
+          zIndexInverse={3000} // Ensure other elements don't overlap dropdown
+        />
       </View>
 
       <TouchableOpacity
@@ -143,7 +168,7 @@ export default function SignupScreen() {
       <Text style={styles.orText}>or sign up with</Text>
       <SocialButtons />
 
-      <TouchableOpacity onPress={() => router.push('/screens/auth/login')}>
+      <TouchableOpacity onPress={() => router.push('/screens/auth/Login')}>
         <Text style={styles.linkText}>
           Have an account? <Text style={styles.link}>SIGN IN</Text>
         </Text>
@@ -164,24 +189,20 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     marginVertical: 8,
   },
-  dropdownWrapper: { width: '100%', marginVertical: 8 },
+  dropdownWrapper: { width: '100%', marginVertical: 8, zIndex: 1000 },
   dropdownLabel: {
     marginBottom: 6,
     fontSize: 16,
     fontWeight: '600',
     color: '#333',
   },
-  pickerContainer: {
+  dropdown: {
     backgroundColor: '#f0f0f0',
-    borderRadius: 10,
-    borderWidth: 1,
     borderColor: '#ccc',
-    overflow: 'hidden',
   },
-  picker: {
-    height: 50,
-    width: '100%',
-    color: '#333',
+  dropdownContainer: {
+    backgroundColor: '#fafafa',
+    borderColor: '#ccc',
   },
   button: {
     backgroundColor: '#005D8F',

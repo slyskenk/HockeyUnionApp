@@ -10,7 +10,7 @@ import {
   FlatList,
   Image,
   KeyboardAvoidingView,
-  Platform,
+  Platform, // Make sure Platform is imported
   ScrollView,
   StyleSheet,
   Text,
@@ -36,7 +36,7 @@ type Message = {
 // Admin assistant avatar (e.g., purple for authority/management)
 const ASSISTANT_AVATAR = 'https://placehold.co/40x40/8B5CF6/FFFFFF?text=AI'; // Purple for admin AI
 
-const ChatbotManager = () => { // Changed component name to ChatbotManager
+const ChatbotManager = () => {
   const router = useRouter();
 
   const [messages, setMessages] = useState<Message[]>([]);
@@ -244,7 +244,8 @@ const ChatbotManager = () => { // Changed component name to ChatbotManager
     <KeyboardAvoidingView
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 60 : 0}
+      // Adjusted keyboardVerticalOffset to push content up more
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0} // Increased from 60
     >
       {/* Gradient Header - Purple theme for admin */}
       <LinearGradient
@@ -388,6 +389,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 15,
     flexGrow: 1,
+    paddingBottom: 100, // <--- Added paddingBottom here to ensure last message is visible
   },
   messageContainer: {
     flexDirection: 'column',

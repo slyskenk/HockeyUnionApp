@@ -1,10 +1,11 @@
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { MaterialCommunityIcons, MaterialIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { onAuthStateChanged } from 'firebase/auth';
+import { onAuthStateChanged, signOut } from 'firebase/auth'; // Import signOut
 import { doc, getDoc } from 'firebase/firestore';
 import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert, // Import Alert for user feedback
   Dimensions,
   Image,
   Modal,
@@ -14,7 +15,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { auth, db } from '../../../firebase/firebase'; // ✅ Adjust path if needed
+import { auth, db } from '../../../firebase/firebase';
 
 const { width } = Dimensions.get('window');
 const screenPaddingHorizontal = 20;
@@ -56,7 +57,7 @@ const DashboardScreen = () => {
     DASHBOARD_ROLES.find((role) => role.label === 'Admin Dashboard') || DASHBOARD_ROLES[0]
   );
   const [adminName, setAdminName] = useState<string>('');
-  const [loadingName, setLoadingName] = useState(true); // ✅ Spinner state
+  const [loadingName, setLoadingName] = useState(true);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
@@ -79,6 +80,8 @@ const DashboardScreen = () => {
       } else {
         setAdminName('');
         setLoadingName(false);
+        // If no user is logged in, redirect to login
+        router.replace('/screens/auth/Login');
       }
     });
 
@@ -104,14 +107,28 @@ const DashboardScreen = () => {
     router.push(role.route);
   };
 
+  const handleSignOut = async () => {
+    try {
+      await signOut(auth);
+      Alert.alert('Signed Out', 'You have been successfully signed out.');
+      router.replace('/screens/auth/Login'); // Redirect to login screen
+    } catch (error) {
+      console.error('Error signing out:', error);
+      Alert.alert('Sign Out Error', 'Failed to sign out. Please try again.');
+    }
+  };
+
   return (
     <View style={styles.rootContainer}>
       {/* Header Area */}
       <View style={styles.header}>
         <Image source={require('../../../assets/images/logo.jpeg')} style={styles.logo} resizeMode="contain" />
+        {/* Sign Out Button */}
+        <TouchableOpacity style={styles.signOutButton} onPress={handleSignOut}>
+          <MaterialIcons name="logout" size={24} color="#555" />
+          <Text style={styles.signOutButtonText}>Sign Out</Text>
+        </TouchableOpacity>
       </View>
-
-     
 
       {loadingName ? (
         <ActivityIndicator size="small" color="#333" style={{ marginBottom: 30 }} />
@@ -161,6 +178,25 @@ const styles = StyleSheet.create({
   logo: {
     width: 60,
     height: 60,
+  },
+  signOutButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f0f0f0',
+    borderRadius: 20,
+    paddingVertical: 8,
+    paddingHorizontal: 15,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 3,
+  },
+  signOutButtonText: {
+    marginLeft: 5,
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#555',
   },
   roleSelectorToggle: {
     flexDirection: 'row',
