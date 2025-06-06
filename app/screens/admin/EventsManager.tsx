@@ -2,6 +2,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
+  ActivityIndicator,
   Alert,
   FlatList,
   Image,
@@ -15,23 +16,23 @@ import {
   TextInput,
   TouchableOpacity,
   View,
-  ActivityIndicator,
 } from 'react-native';
 
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { Picker } from '@react-native-picker/picker';
 
 // --- Firebase Imports ---
-import { db } from '../../../firebase/firebase';
 import {
-  collection,
   addDoc,
-  doc,
-  updateDoc,
+  collection,
   deleteDoc,
+  doc,
   onSnapshot,
-  query,
   orderBy,
+  query,
+  updateDoc,
 } from 'firebase/firestore';
+import { db } from '../../../firebase/firebase';
 
 // --- Type Definitions ---
 type EventStatus = 'Draft' | 'Published' | 'Completed' | 'Cancelled';
@@ -62,9 +63,12 @@ const EventsManager = () => {
   const [eventToEdit, setEventToEdit] = useState<EventItem | null>(null);
   const [formData, setFormData] = useState<Partial<EventItem>>({});
 
-  // State to hold string representations of dates for TextInput
-  const [startDateString, setStartDateString] = useState<string>('');
-  const [endDateString, setEndDateString] = useState<string>('');
+  // States to control date/time picker visibility
+  const [showStartDatePicker, setShowStartDatePicker] = useState(false);
+  const [showStartTimePicker, setShowStartTimePicker] = useState(false); // For Android time picker
+  const [showEndDatePicker, setShowEndDatePicker] = useState(false);
+  const [showEndTimePicker, setShowEndTimePicker] = useState(false); // For Android time picker
+
 
   const eventsCollectionRef = collection(db, 'events');
 
@@ -106,16 +110,13 @@ const EventsManager = () => {
     return () => unsubscribe();
   }, []);
 
-  // Effect to initialize form data and date strings when modal opens or eventToEdit changes
+  // Effect to initialize form data when modal opens or eventToEdit changes
   useEffect(() => {
     if (isModalVisible) {
       if (eventToEdit) {
         setFormData({
           ...eventToEdit,
         });
-        // Convert Unix timestamps back to a displayable string for the TextInput
-        setStartDateString(formatDateForInput(eventToEdit.startDate));
-        setEndDateString(formatDateForInput(eventToEdit.endDate));
       } else {
         const now = Date.now();
         const oneHourLater = now + 3600000;
@@ -131,10 +132,12 @@ const EventsManager = () => {
           registrationLink: '',
           imageUrl: '',
         });
-        // Initialize string inputs with formatted current times
-        setStartDateString(formatDateForInput(now));
-        setEndDateString(formatDateForInput(oneHourLater));
       }
+      // Ensure all pickers are hidden when modal opens/resets
+      setShowStartDatePicker(false);
+      setShowStartTimePicker(false);
+      setShowEndDatePicker(false);
+      setShowEndTimePicker(false);
     }
   }, [isModalVisible, eventToEdit]);
 
@@ -156,15 +159,17 @@ const EventsManager = () => {
     });
   };
 
-  // Helper to format date for TextInput (e.g., "YYYY-MM-DD HH:mm")
-  const formatDateForInput = (timestamp: number): string => {
+  // Helper to format date for display in input (from timestamp)
+  const formatTimestampToDisplay = (timestamp: number): string => {
     const date = new Date(timestamp);
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    const hours = String(date.getHours()).padStart(2, '0');
-    const minutes = String(date.getMinutes()).padStart(2, '0');
-    return `${year}-${month}-${day} ${hours}:${minutes}`;
+    return date.toLocaleString('en-GB', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false, // Use 24-hour format
+    });
   };
 
   const getStatusStyle = (status: EventStatus) => {
@@ -224,64 +229,100 @@ const EventsManager = () => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
-  // New function to handle date string input and convert it to timestamp
-  const handleDateStringChange = (
-    field: 'startDate' | 'endDate',
-    value: string
-  ) => {
-    // Update the string state
-    if (field === 'startDate') {
-      setStartDateString(value);
-    } else {
-      setEndDateString(value);
-    }
+  const handleStartDateChange = (event: any, selectedDate: Date | undefined) => {
+    setShowStartDatePicker(false); // Always hide the date picker
 
-    // Attempt to parse the date string. This is a crucial part where validation
-    // and specific formatting (e.g., "YYYY-MM-DD HH:mm") are important.
-    const parsedDate = new Date(value);
+    if (event.type === 'set' && selectedDate) {
+      // If a date was picked, update the form data.
+      // We only update the date part, keeping the time if it was already set.
+      const currentStart = formData.startDate ? new Date(formData.startDate) : new Date();
+      currentStart.setFullYear(selectedDate.getFullYear());
+      currentStart.setMonth(selectedDate.getMonth());
+      currentStart.setDate(selectedDate.getDate());
+      
+      handleChangeFormData('startDate', currentStart.getTime());
 
-    if (!isNaN(parsedDate.getTime())) {
-      handleChangeFormData(field, parsedDate.getTime());
-    } else {
-      // Handle invalid date input (e.g., show an error, keep old value)
-      console.warn(`Invalid date input for ${field}: ${value}`);
-      // Optionally, you might want to clear the timestamp in formData or keep the old one
-      // setFormData((prev) => ({ ...prev, [field]: undefined })); // Or prev[field]
+      // On Android, after picking the date, immediately show the time picker
+      if (Platform.OS === 'android') {
+        setShowStartTimePicker(true);
+      }
     }
   };
 
-  const handleSaveModal = async () => {
-    // Before saving, ensure the dates from string inputs are converted to numbers
-    // and that they are valid.
-    const startTimestamp = new Date(startDateString).getTime();
-    const endTimestamp = new Date(endDateString).getTime();
+  const handleStartTimeChange = (event: any, selectedTime: Date | undefined) => {
+    setShowStartTimePicker(false); // Always hide the time picker
 
-    if (isNaN(startTimestamp) || isNaN(endTimestamp)) {
-        Alert.alert('Invalid Date Format', 'Please enter dates in a valid format, e.g., "YYYY-MM-DD HH:mm".');
-        return;
+    if (event.type === 'set' && selectedTime) {
+      // If a time was picked, update the form data.
+      // We only update the time part, keeping the date.
+      const currentStart = formData.startDate ? new Date(formData.startDate) : new Date();
+      currentStart.setHours(selectedTime.getHours());
+      currentStart.setMinutes(selectedTime.getMinutes());
+      currentStart.setSeconds(0);
+      currentStart.setMilliseconds(0);
+
+      handleChangeFormData('startDate', currentStart.getTime());
     }
+  };
 
+  const handleEndDateChange = (event: any, selectedDate: Date | undefined) => {
+    setShowEndDatePicker(false); // Always hide the date picker
+
+    if (event.type === 'set' && selectedDate) {
+      const currentEnd = formData.endDate ? new Date(formData.endDate) : new Date();
+      currentEnd.setFullYear(selectedDate.getFullYear());
+      currentEnd.setMonth(selectedDate.getMonth());
+      currentEnd.setDate(selectedDate.getDate());
+
+      handleChangeFormData('endDate', currentEnd.getTime());
+
+      if (Platform.OS === 'android') {
+        setShowEndTimePicker(true);
+      }
+    }
+  };
+
+  const handleEndTimeChange = (event: any, selectedTime: Date | undefined) => {
+    setShowEndTimePicker(false); // Always hide the time picker
+
+    if (event.type === 'set' && selectedTime) {
+      const currentEnd = formData.endDate ? new Date(formData.endDate) : new Date();
+      currentEnd.setHours(selectedTime.getHours());
+      currentEnd.setMinutes(selectedTime.getMinutes());
+      currentEnd.setSeconds(0);
+      currentEnd.setMilliseconds(0);
+
+      handleChangeFormData('endDate', currentEnd.getTime());
+    }
+  };
+
+
+  const handleSaveModal = async () => {
+    // Ensure required fields are filled
     if (
       !formData.title ||
       !formData.description ||
-      !formData.location
+      !formData.location ||
+      !formData.startDate ||
+      !formData.endDate
     ) {
-      Alert.alert('Missing Information', 'Please fill in Title, Description, and Location.');
+      Alert.alert('Missing Information', 'Please fill in Title, Description, Location, and both Dates.');
       return;
     }
 
-    if (startTimestamp > endTimestamp) {
+    // Validate dates
+    if (formData.startDate > formData.endDate) {
       Alert.alert('Invalid Dates', 'End Date cannot be before Start Date.');
       return;
     }
 
-    // Prepare data for Firestore, using the parsed timestamps
+    // Prepare data for Firestore
     const eventDataPayload: Omit<EventItem, 'id'> = {
-      title: formData.title!,
-      description: formData.description!,
-      startDate: startTimestamp, // Use the parsed timestamp
-      endDate: endTimestamp, // Use the parsed timestamp
-      location: formData.location!,
+      title: formData.title,
+      description: formData.description,
+      startDate: formData.startDate,
+      endDate: formData.endDate,
+      location: formData.location,
       organizer: formData.organizer || '',
       audience: formData.audience || 'All',
       registrationLink: formData.registrationLink || '',
@@ -302,9 +343,6 @@ const EventsManager = () => {
       }
       setIsModalVisible(false);
       setEventToEdit(null);
-      // Clear date strings on modal close
-      setStartDateString('');
-      setEndDateString('');
     } catch (error) {
       console.error('Error saving event: ', error);
       Alert.alert('Error', 'Could not save the event. Please try again.');
@@ -324,8 +362,11 @@ const EventsManager = () => {
           onPress: () => {
             setIsModalVisible(false);
             setEventToEdit(null);
-            setStartDateString(''); // Clear on cancel
-            setEndDateString('');   // Clear on cancel
+            // Ensure all pickers are hidden when modal closes
+            setShowStartDatePicker(false);
+            setShowStartTimePicker(false);
+            setShowEndDatePicker(false);
+            setShowEndTimePicker(false);
           },
           style: 'destructive',
         },
@@ -394,6 +435,11 @@ const EventsManager = () => {
       </View>
     );
   }
+
+  const now = new Date();
+  // Set seconds and milliseconds to 0 for a cleaner comparison and to avoid issues
+  now.setSeconds(0);
+  now.setMilliseconds(0);
 
   return (
     <KeyboardAvoidingView
@@ -508,25 +554,63 @@ const EventsManager = () => {
               placeholder="e.g., National Hockey Stadium"
             />
 
-            {/* --- Manual Start Date & Time Input --- */}
-            <Text style={styles.label}>Start Date & Time (YYYY-MM-DD HH:mm):</Text>
-            <TextInput
-              style={styles.input}
-              value={startDateString}
-              onChangeText={(text) => handleDateStringChange('startDate', text)}
-              placeholder="e.g., 2025-06-06 14:30"
-              keyboardType="default" // Consider 'datetime' if you want more specific keyboard on some devices
-            />
+            {/* --- Start Date & Time Pickers --- */}
+            <Text style={styles.label}>Start Date & Time:</Text>
+            <TouchableOpacity
+              onPress={() => setShowStartDatePicker(true)}
+              style={styles.datePickerButton}
+            >
+              <MaterialIcons name="event" size={20} color="#666" />
+              <Text style={styles.datePickerButtonText}>
+                {formData.startDate ? formatTimestampToDisplay(formData.startDate) : 'Select Start Date & Time'}
+              </Text>
+            </TouchableOpacity>
+            {showStartDatePicker && (
+              <DateTimePicker
+                value={formData.startDate ? new Date(formData.startDate) : now}
+                mode="date" // Always 'date' for initial selection
+                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                onChange={handleStartDateChange}
+                minimumDate={now} // Forbid past dates
+              />
+            )}
+            {Platform.OS === 'android' && showStartTimePicker && (
+              <DateTimePicker
+                value={formData.startDate ? new Date(formData.startDate) : now}
+                mode="time" // Separate time picker for Android
+                display="default"
+                onChange={handleStartTimeChange}
+              />
+            )}
 
-            {/* --- Manual End Date & Time Input --- */}
-            <Text style={styles.label}>End Date & Time (YYYY-MM-DD HH:mm):</Text>
-            <TextInput
-              style={styles.input}
-              value={endDateString}
-              onChangeText={(text) => handleDateStringChange('endDate', text)}
-              placeholder="e.g., 2025-06-06 16:00"
-              keyboardType="default" // Consider 'datetime' if you want more specific keyboard on some devices
-            />
+            {/* --- End Date & Time Pickers --- */}
+            <Text style={styles.label}>End Date & Time:</Text>
+            <TouchableOpacity
+              onPress={() => setShowEndDatePicker(true)}
+              style={styles.datePickerButton}
+            >
+              <MaterialIcons name="event" size={20} color="#666" />
+              <Text style={styles.datePickerButtonText}>
+                {formData.endDate ? formatTimestampToDisplay(formData.endDate) : 'Select End Date & Time'}
+              </Text>
+            </TouchableOpacity>
+            {showEndDatePicker && (
+              <DateTimePicker
+                value={formData.endDate ? new Date(formData.endDate) : formData.startDate ? new Date(formData.startDate) : now}
+                mode="date"
+                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                onChange={handleEndDateChange}
+                minimumDate={formData.startDate ? new Date(formData.startDate) : now} // Ensure end date is not before start date, and not in the past
+              />
+            )}
+             {Platform.OS === 'android' && showEndTimePicker && (
+              <DateTimePicker
+                value={formData.endDate ? new Date(formData.endDate) : formData.startDate ? new Date(formData.startDate) : now}
+                mode="time"
+                display="default"
+                onChange={handleEndTimeChange}
+              />
+            )}
 
             <Text style={styles.label}>Organizer (Optional):</Text>
             <TextInput
@@ -599,19 +683,19 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#f0f2f5',
   },
-  loadingContainer: { // Added for initial full screen loading
+  loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: '#f0f2f5',
   },
-  loadingText: { // Added
+  loadingText: {
     marginTop: 10,
     fontSize: 16,
     color: '#333',
   },
   header: {
-    paddingTop: Platform.OS === 'android' ? 25 : 50, // Adjust for status bar
+    paddingTop: Platform.OS === 'android' ? 25 : 50,
     paddingBottom: 10,
     alignItems: 'center',
     backgroundColor: '#fff',
@@ -628,16 +712,15 @@ const styles = StyleSheet.create({
   backButton: {
     position: 'absolute',
     left: 15,
-    top: Platform.OS === 'android' ? 28 : 50, // Align with header padding
+    top: Platform.OS === 'android' ? 28 : 50,
     zIndex: 10,
     backgroundColor: '#007AFF',
     borderRadius: 20,
     padding: 8,
   },
   headerLogo: {
-    width: Platform.OS === 'android' ? 40 : 50, // Adjusted size
-    height: Platform.OS === 'android' ? 40 : 50, // Adjusted size
-    // marginBottom: 5, // Removed to align better with title
+    width: Platform.OS === 'android' ? 40 : 50,
+    height: Platform.OS === 'android' ? 40 : 50,
   },
   headerTitle: {
     fontSize: 20,
@@ -649,7 +732,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderRadius: 10,
     paddingHorizontal: 15,
-    paddingVertical: Platform.OS === 'ios' ? 12 : 10, // OS specific padding
+    paddingVertical: Platform.OS === 'ios' ? 12 : 10,
     margin: 15,
     fontSize: 16,
     shadowColor: '#000',
@@ -657,11 +740,11 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 2,
     elevation: 2,
-    color: '#333', // Text color
+    color: '#333',
   },
   listContent: {
     paddingHorizontal: 15,
-    paddingTop: 0, // Removed top padding as searchBar has margin
+    paddingTop: 0,
     paddingBottom: 80,
   },
   eventCard: {
@@ -670,11 +753,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderRadius: 12,
     padding: 15,
-    marginBottom: 12, // Increased margin
+    marginBottom: 12,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08, // Slightly reduced opacity
-    shadowRadius: 4, // Slightly increased radius
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
     elevation: 3,
   },
   eventImage: {
@@ -682,20 +765,20 @@ const styles = StyleSheet.create({
     height: 80,
     borderRadius: 10,
     marginRight: 15,
-    backgroundColor: '#e9ecef', // Lighter placeholder
+    backgroundColor: '#e9ecef',
   },
   eventInfo: {
     flex: 1,
   },
   eventTitle: {
-    fontSize: 17, // Slightly larger
+    fontSize: 17,
     fontWeight: '600',
-    color: '#212529', // Darker title
+    color: '#212529',
     marginBottom: 5,
   },
   eventDetails: {
     fontSize: 13,
-    color: '#495057', // Softer detail color
+    color: '#495057',
     marginTop: 3,
     flexDirection: 'row',
     alignItems: 'center',
@@ -703,40 +786,39 @@ const styles = StyleSheet.create({
   eventStatus: {
     fontSize: 12,
     fontWeight: 'bold',
-    paddingHorizontal: 10, // More padding
-    paddingVertical: 5,    // More padding
-    borderRadius: 15,      // More rounded
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 15,
     overflow: 'hidden',
     alignSelf: 'flex-start',
-    marginTop: 10, // More margin top
-    textTransform: 'uppercase', // Uppercase status
-    letterSpacing: 0.5,       // Slight letter spacing
+    marginTop: 10,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   statusPublished: {
-    backgroundColor: '#e7f5ff', // Lighter blue
+    backgroundColor: '#e7f5ff',
     color: '#007bff',
   },
   statusCompleted: {
-    backgroundColor: '#e6f9f0', // Lighter green
+    backgroundColor: '#e6f9f0',
     color: '#20c997',
   },
   statusCancelled: {
-    backgroundColor: '#fff0f1', // Lighter red
+    backgroundColor: '#fff0f1',
     color: '#dc3545',
   },
   statusDraft: {
-    backgroundColor: '#fff9e6', // Lighter orange
+    backgroundColor: '#fff9e6',
     color: '#fd7e14',
   },
   eventActions: {
-    flexDirection: 'column', // Changed to column for potentially more actions
-    justifyContent: 'space-around', // Space them out
+    flexDirection: 'column',
+    justifyContent: 'space-around',
     marginLeft: 10,
-    height: '100%', // Take full height of card for alignment
+    height: '100%',
   },
   actionIcon: {
-    padding: 6, // Slightly smaller padding
-    // Removed marginLeft for column layout
+    padding: 6,
   },
   floatingAddButton: {
     position: 'absolute',
@@ -755,28 +837,28 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
   emptyListContainer: {
-    flexGrow: 1, // Use flexGrow to allow scrolling even when content is small
+    flexGrow: 1,
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
-    minHeight: Platform.OS === 'ios' ? 300 : 250, // Ensure it takes up some space
+    minHeight: Platform.OS === 'ios' ? 300 : 250,
   },
   emptyListText: {
     fontSize: 18,
-    color: '#6c757d', // Softer color
+    color: '#6c757d',
     textAlign: 'center',
     marginTop: 15,
-    fontWeight: '600', // Slightly bolder
+    fontWeight: '600',
   },
   emptyListSubText: {
     fontSize: 14,
-    color: '#adb5bd', // Lighter subtext
+    color: '#adb5bd',
     textAlign: 'center',
     marginTop: 8,
   },
   modalContainer: {
     flex: 1,
-    backgroundColor: '#f8f9fa', // Lighter modal background
+    backgroundColor: '#f8f9fa',
   },
   modalHeader: {
     flexDirection: 'row',
@@ -787,7 +869,7 @@ const styles = StyleSheet.create({
     paddingBottom: 15,
     backgroundColor: '#ffffff',
     borderBottomWidth: 1,
-    borderBottomColor: '#dee2e6', // Softer border
+    borderBottomColor: '#dee2e6',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
@@ -796,43 +878,43 @@ const styles = StyleSheet.create({
   },
   modalTitle: {
     fontSize: 20,
-    fontWeight: '600', // Bolder title
-    color: '#343a40', // Darker title
+    fontWeight: '600',
+    color: '#343a40',
   },
   closeButton: {
-    padding: 8, // More touch area
+    padding: 8,
   },
   saveButton: {
-    padding: 8, // More touch area
-    minWidth: 30, // Ensure it has some width for activity indicator
+    padding: 8,
+    minWidth: 30,
     alignItems: 'center',
   },
   formContainer: {
     padding: 20,
-    paddingBottom: Platform.OS === 'ios' ? 60 : 40, // More padding at bottom for scroll
+    paddingBottom: Platform.OS === 'ios' ? 60 : 40,
   },
   label: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#495057', // Softer label color
-    marginBottom: 8, // Increased margin
-    marginTop: 18, // Increased margin
+    color: '#495057',
+    marginBottom: 8,
+    marginTop: 18,
   },
   input: {
     backgroundColor: '#fff',
     borderRadius: 8,
     paddingHorizontal: 15,
-    paddingVertical: Platform.OS === 'ios' ? 14 : 10, // OS specific padding
+    paddingVertical: Platform.OS === 'ios' ? 14 : 10,
     fontSize: 16,
     borderWidth: 1,
-    borderColor: '#ced4da', // Softer border
-    marginBottom: 10, // Increased margin
-    color: '#495057', // Input text color
+    borderColor: '#ced4da',
+    marginBottom: 10,
+    color: '#495057',
   },
   multilineInput: {
     minHeight: 100,
     textAlignVertical: 'top',
-    paddingTop: 12, // Adjust padding for multiline
+    paddingTop: 12,
   },
   datePickerButton: {
     flexDirection: 'row',
@@ -840,7 +922,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderRadius: 8,
     paddingHorizontal: 15,
-    paddingVertical: Platform.OS === 'ios' ? 14 : 12, // OS specific padding
+    paddingVertical: Platform.OS === 'ios' ? 14 : 12,
     borderWidth: 1,
     borderColor: '#ced4da',
     marginBottom: 10,
@@ -855,15 +937,15 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     borderWidth: 1,
     borderColor: '#ced4da',
-    overflow: 'hidden', // Important for Picker border radius on Android
+    overflow: 'hidden',
     marginBottom: 10,
-    justifyContent: 'center', // Center picker text on Android
+    justifyContent: 'center',
   },
   picker: {
-    height: Platform.OS === 'ios' ? undefined : 50, // iOS height is intrinsic
+    height: Platform.OS === 'ios' ? undefined : 50,
     width: '100%',
-    color: '#495057', // Picker text color
-    backgroundColor: Platform.OS === 'android' ? '#fff' : undefined, // Android needs explicit background
+    color: '#495057',
+    backgroundColor: Platform.OS === 'android' ? '#fff' : undefined,
   },
 });
 

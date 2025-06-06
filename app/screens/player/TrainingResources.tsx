@@ -20,7 +20,7 @@ const trainingResources = [
         description: 'Improve your on-ice speed with dryland drills.',
         image: 'https://images.unsplash.com/photo-1605033241403-f86c79d7cd4b',
         type: 'video',
-        link: 'https://www.youtube.com/watch?v=kUUJ3jJ9r2I',
+        link: 'https://youtu.be/eE2cs74jInA?si=wsml7jqrdWTaIr6G',
     },
     {
         id: '2',
@@ -28,7 +28,7 @@ const trainingResources = [
         description: 'Develop silky mitts with these pro stickhandling techniques.',
         image: 'https://images.unsplash.com/photo-1601262499364-3f4b3ed9baf5',
         type: 'video',
-        link: 'https://www.youtube.com/watch?v=ceTeZXUXvDs',
+        link: 'https://youtu.be/mZ12ii2pfk8?si=pn1UUTXaIyto0ZTH',
     },
     {
         id: '3',
@@ -36,7 +36,7 @@ const trainingResources = [
         description: 'Full-body workout routines for hockey players.',
         image: 'https://images.unsplash.com/photo-1599058917212-dc69e1e6fa8b',
         type: 'pdf',
-        link: 'https://www.dropbox.com/scl/fi/abc123/Hockey-Strength-Training.pdf?rlkey=xyz456&dl=1',
+        link: 'https://www.scribd.com/document/716421654/Complete-Hockey-Strength',
     },
     {
         id: '4',
@@ -44,7 +44,7 @@ const trainingResources = [
         description: 'Build your confidence and focus under pressure.',
         image: 'https://images.unsplash.com/photo-1534367610401-86d1a3a2e2dd',
         type: 'article',
-        link: 'https://www.hockeycanada.ca/en-ca/news/mental-toughness-tips',
+        link: 'https://positivepsychology.com/mental-toughness-for-young-athletes/',
     },
 ];
 

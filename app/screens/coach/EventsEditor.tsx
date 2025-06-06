@@ -1,4 +1,5 @@
 import { MaterialIcons } from '@expo/vector-icons';
+import DateTimePicker from '@react-native-community/datetimepicker'; // Real DateTimePicker
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
@@ -15,8 +16,6 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-// For a real app, uncomment and use a date/time picker library:
-// import DateTimePicker from '@react-native-community/datetimepicker';
 
 const { width, height } = Dimensions.get('window');
 
@@ -54,7 +53,7 @@ export const DUMMY_EVENTS: TeamEvent[] = [ // Changed to export
     id: 'e1',
     title: 'Morning Training Session',
     description: 'Focus on offensive strategies and penalty corners.',
-    date: '2025-05-30', // Tomorrow
+    date: '2025-06-07', // Tomorrow from 6th June 2025
     time: '09:00',
     location: 'National Hockey Stadium',
     type: 'Practice',
@@ -63,7 +62,7 @@ export const DUMMY_EVENTS: TeamEvent[] = [ // Changed to export
     id: 'e2',
     title: 'Friendly vs. Young Gladiators',
     description: 'Pre-season friendly match to test new formations.',
-    date: '2025-06-05', // Next week
+    date: '2025-06-12', // Next week
     time: '18:30',
     location: 'DTS Field',
     type: 'Friendly Match',
@@ -72,7 +71,7 @@ export const DUMMY_EVENTS: TeamEvent[] = [ // Changed to export
     id: 'e3',
     title: 'Team Video Analysis',
     description: 'Review of last season\'s key matches.',
-    date: '2025-06-02', // Early next week
+    date: '2025-06-09', // Early next week
     time: '14:00',
     location: 'Team Meeting Room (Online)',
     type: 'Video Analysis',
@@ -90,7 +89,7 @@ export const DUMMY_EVENTS: TeamEvent[] = [ // Changed to export
     id: 'e5',
     title: 'Board Meeting with Captains',
     description: 'Discuss upcoming league challenges.',
-    date: '2025-05-29', // Today (past)
+    date: '2025-06-06', // Today
     time: '20:00',
     location: 'Clubhouse',
     type: 'Team Meeting',
@@ -144,8 +143,10 @@ const CoachEventsEditor = () => {
     setCurrentEvent(event);
     setTitle(event.title);
     setDescription(event.description);
-    setDate(new Date(`${event.date}T${event.time}`));
-    setTime(new Date(`${event.date}T${event.time}`));
+    // Set date and time from event data
+    const eventDateTime = new Date(`${event.date}T${event.time}`);
+    setDate(eventDateTime);
+    setTime(eventDateTime);
     setLocation(event.location);
     setType(event.type);
     setModalVisible(true);
@@ -159,6 +160,21 @@ const CoachEventsEditor = () => {
 
     const formattedDate = date.toISOString().split('T')[0]; // YYYY-MM-DD
     const formattedTime = `${time.getHours().toString().padStart(2, '0')}:${time.getMinutes().toString().padStart(2, '0')}`; // HH:MM
+
+    // Check if the selected date/time is in the past, only for new events or if date/time is changed
+    const now = new Date();
+    const selectedDateTime = new Date(`${formattedDate}T${formattedTime}`);
+    
+    // Allow editing existing events even if their original date was in the past,
+    // but prevent setting a new past date for existing events or adding new past events.
+    if (!currentEvent && selectedDateTime < now) {
+        Alert.alert('Invalid Date/Time', 'You cannot create an event in the past.');
+        return;
+    } else if (currentEvent && selectedDateTime < now && (formattedDate !== currentEvent.date || formattedTime !== currentEvent.time)) {
+        // If editing an existing event and the new date/time is in the past, prevent it
+        Alert.alert('Invalid Date/Time', 'You cannot set an existing event to a past date or time.');
+        return;
+    }
 
     if (currentEvent) {
       // Update existing event
@@ -204,19 +220,24 @@ const CoachEventsEditor = () => {
     );
   };
 
-  // Mock DateTimePicker functions (replace with real ones)
   const onDateChange = (event: any, selectedDate?: Date) => {
-    setShowDatePicker(Platform.OS === 'ios'); // Keep picker open on iOS
-    if (selectedDate) {
-      setDate(selectedDate);
+    const currentDate = selectedDate || date;
+    setShowDatePicker(Platform.OS === 'ios');
+    // Ensure selected date is not in the past
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Normalize today's date to start of day
+    if (currentDate < today) {
+      Alert.alert('Invalid Date', 'You cannot select a date in the past.');
+      setDate(new Date()); // Revert to current date if past date is selected
+    } else {
+      setDate(currentDate);
     }
   };
 
   const onTimeChange = (event: any, selectedTime?: Date) => {
-    setShowTimePicker(Platform.OS === 'ios'); // Keep picker open on iOS
-    if (selectedTime) {
-      setTime(selectedTime);
-    }
+    const currentTime = selectedTime || time;
+    setShowTimePicker(Platform.OS === 'ios');
+    setTime(currentTime);
   };
 
   const showDatepicker = () => {
@@ -363,7 +384,7 @@ const CoachEventsEditor = () => {
               onChangeText={setLocation}
             />
 
-            {/* Date Picker (Mock or real) */}
+            {/* Date Picker */}
             <TouchableOpacity onPress={showDatepicker} style={styles.dateTimeButton}>
               <MaterialIcons name="calendar-today" size={20} color="#666" />
               <Text style={styles.dateTimeButtonText}>
@@ -371,25 +392,17 @@ const CoachEventsEditor = () => {
               </Text>
             </TouchableOpacity>
             {showDatePicker && (
-              // Replace this mock with real DateTimePicker
-              <View style={styles.mockDatePicker}>
-                <Text>Mock Date Picker: {date.toDateString()}</Text>
-                <TouchableOpacity onPress={() => setShowDatePicker(false)}>
-                  <Text style={{ color: '#007AFF' }}>Select Date</Text>
-                </TouchableOpacity>
-              </View>
-              /*
               <DateTimePicker
                 testID="datePicker"
                 value={date}
                 mode="date"
-                display="default"
+                display={Platform.OS === 'ios' ? 'spinner' : 'default'} // 'spinner' for iOS for better UX
                 onChange={onDateChange}
+                minimumDate={new Date()} // Prevent selecting past dates
               />
-              */
             )}
 
-            {/* Time Picker (Mock or real) */}
+            {/* Time Picker */}
             <TouchableOpacity onPress={showTimepicker} style={styles.dateTimeButton}>
               <MaterialIcons name="access-time" size={20} color="#666" />
               <Text style={styles.dateTimeButtonText}>
@@ -397,22 +410,13 @@ const CoachEventsEditor = () => {
               </Text>
             </TouchableOpacity>
             {showTimePicker && (
-              // Replace this mock with real DateTimePicker
-              <View style={styles.mockDatePicker}>
-                <Text>Mock Time Picker: {time.toLocaleTimeString()}</Text>
-                <TouchableOpacity onPress={() => setShowTimePicker(false)}>
-                  <Text style={{ color: '#007AFF' }}>Select Time</Text>
-                </TouchableOpacity>
-              </View>
-              /*
               <DateTimePicker
                 testID="timePicker"
                 value={time}
                 mode="time"
-                display="default"
+                display={Platform.OS === 'ios' ? 'spinner' : 'default'} // 'spinner' for iOS for better UX
                 onChange={onTimeChange}
               />
-              */
             )}
 
             {/* Event Type Selection */}
@@ -675,13 +679,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#333',
     marginLeft: 10,
-  },
-  mockDatePicker: {
-    backgroundColor: '#f0f0f0',
-    borderRadius: 10,
-    padding: 15,
-    marginBottom: 15,
-    alignItems: 'center',
   },
   typeSelectionContainer: {
     flexDirection: 'row',
