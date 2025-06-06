@@ -3,8 +3,9 @@
 import { MaterialIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
+  ActivityIndicator,
   Dimensions,
   Image,
   Modal,
@@ -14,7 +15,6 @@ import {
   Text,
   TouchableOpacity,
   View,
-  ActivityIndicator,
 } from 'react-native';
 
 // 🔥 Firebase Imports
@@ -185,13 +185,7 @@ const CoachDashboard = () => {
         </View>
 
         {/* Role Selector Toggle */}
-        <TouchableOpacity
-          style={styles.roleSelectorToggle}
-          onPress={() => setShowRoleSelector(true)}
-        >
-          <Text style={styles.currentRoleText}>{currentRole.label}</Text>
-          <MaterialIcons name="arrow-drop-down" size={24} color="#fff" />
-        </TouchableOpacity>
+        
       </LinearGradient>
 
       <ScrollView contentContainerStyle={styles.scrollViewContent}>

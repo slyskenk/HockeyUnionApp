@@ -141,16 +141,13 @@ const SupportersDashboard = () => {
           style={styles.headerLogo}
           resizeMode="contain"
         />
-     
+        <View style={styles.headerTextContainer}>
+          <Text style={styles.welcomeText}>Welcome, {FAN_NAME}!</Text>
+          <Text style={styles.headerTitle}>Your {TEAM_NAME} Hub</Text>
+        </View>
 
         {/* Role Selector Toggle */}
-        <TouchableOpacity
-          style={styles.roleSelectorToggle}
-          onPress={() => setShowRoleSelector(true)}
-        >
-          <Text style={styles.currentRoleText}>{currentRole.label}</Text>
-          <MaterialIcons name="arrow-drop-down" size={24} color="#fff" />
-        </TouchableOpacity>
+      
       </LinearGradient>
 
       <ScrollView contentContainerStyle={styles.scrollViewContent}>

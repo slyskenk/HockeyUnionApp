@@ -1,4 +1,4 @@
-import { MaterialCommunityIcons, MaterialIcons } from '@expo/vector-icons';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { onAuthStateChanged } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
@@ -109,10 +109,6 @@ const DashboardScreen = () => {
       {/* Header Area */}
       <View style={styles.header}>
         <Image source={require('../../../assets/images/logo.jpeg')} style={styles.logo} resizeMode="contain" />
-        <TouchableOpacity style={styles.roleSelectorToggle} onPress={() => setShowRoleSelector(true)}>
-          <Text style={styles.currentRoleText}>{currentRole.label}</Text>
-          <MaterialIcons name="arrow-drop-down" size={24} color="#555" />
-        </TouchableOpacity>
       </View>
 
      

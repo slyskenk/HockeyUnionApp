@@ -128,16 +128,13 @@ const PlayerDashboard = () => {
           style={styles.headerLogo}
           resizeMode="contain"
         />
-    
+        <View style={styles.headerTextContainer}>
+          <Text style={styles.welcomeText}>Hello, {PLAYER_NAME}!</Text>
+          <Text style={styles.headerTitle}>Player Dashboard</Text>
+        </View>
 
         {/* Role Selector Toggle */}
-        <TouchableOpacity
-          style={styles.roleSelectorToggle}
-          onPress={() => setShowRoleSelector(true)}
-        >
-          <Text style={styles.currentRoleText}>{currentRole.label}</Text>
-          <MaterialIcons name="arrow-drop-down" size={24} color="#fff" /> {/* Changed color to white */}
-        </TouchableOpacity>
+    
       </LinearGradient>
 
       <ScrollView contentContainerStyle={styles.scrollViewContent}>
