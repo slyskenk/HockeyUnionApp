@@ -1,3 +1,4 @@
+
 import React, { useEffect, useRef } from 'react';
 import {
   Animated,
@@ -49,14 +50,7 @@ export default function SplashScreen() {
       ]),
     ]).start();
 
-    // Optional auto-navigation (commented out)
-    /*
-    const timeout = setTimeout(() => {
-      router.replace('/screens/auth/login');
-    }, 3000);
-
-    return () => clearTimeout(timeout);
-    */
+    
   }, []);
 
   return (
