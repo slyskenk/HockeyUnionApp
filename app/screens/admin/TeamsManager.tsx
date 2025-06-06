@@ -1,23 +1,19 @@
 import { MaterialIcons } from '@expo/vector-icons'; // For various icons
 import { useRouter } from 'expo-router'; // Import useRouter for navigation
-import React, { useCallback, useMemo, useState, useEffect } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
   Alert,
   FlatList,
   Image,
   KeyboardAvoidingView,
-  Platform,
+  Platform, // Import AlertButton type for explicit typing
   ScrollView,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
-  View,
-  ActivityIndicator
+  View
 } from 'react-native';
-
-// Import Firebase services
-import { db, collection, doc, addDoc, getDocs, updateDoc, deleteDoc, query, where } from '../../../firebase/firebase'; // Adjust path as per your firebaseConfig.ts location
 
 // --- Type Definitions ---
 
@@ -28,7 +24,6 @@ type Player = {
   position?: string; // e.g., 'Forward', 'Defender', 'Goalkeeper'
   email?: string;
   avatar?: string; // Player's profile picture URL
-  teamId: string; // Link to the team
 };
 
 type Team = {
@@ -37,56 +32,60 @@ type Team = {
   coachName?: string;
   division?: string; // e.g., 'Senior Men', 'U16 Girls'
   teamLogo?: string; // Team logo URL
+  players: Player[]; // Array of players belonging to this team
 };
 
+// --- Dummy Data ---
+
+const DUMMY_TEAMS: Team[] = [
+  {
+    id: 't1',
+    name: 'Desert Scorpions (Men)',
+    coachName: 'Coach John',
+    division: 'Senior Men',
+    teamLogo: 'https://placehold.co/80x80/FF5733/FFFFFF?text=DS',
+    players: [
+      { id: 'p1', name: 'Player One', jerseyNumber: 7, position: 'Forward', email: 'p1@example.com', avatar: 'https://placehold.co/40x40/FF5733/FFFFFF?text=P1' },
+      { id: 'p2', name: 'Player Two', jerseyNumber: 10, position: 'Midfielder', email: 'p2@example.com', avatar: 'https://placehold.co/40x40/33FF57/000000?text=P2' },
+      { id: 'p6', name: 'Player Six', jerseyNumber: 1, position: 'Goalkeeper', email: 'p6@example.com', avatar: 'https://placehold.co/40x40/FF5733/FFFFFF?text=P6' },
+    ],
+  },
+  {
+    id: 't2',
+    name: 'Oryx Chargers (Women)',
+    coachName: 'Coach Sarah',
+    division: 'Senior Women',
+    teamLogo: 'https://placehold.co/80x80/3366FF/FFFFFF?text=OC',
+    players: [
+      { id: 'p3', name: 'Player Three', jerseyNumber: 5, position: 'Defender', email: 'p3@example.com', avatar: 'https://placehold.co/40x40/3357FF/FFFFFF?text=P3' },
+      { id: 'p4', name: 'Player Four', jerseyNumber: 12, position: 'Goalkeeper', email: 'p4@example.com', avatar: 'https://placehold.co/40x40/FFD700/000000?text=P4' },
+    ],
+  },
+  {
+    id: 't3',
+    name: 'Junior Falcons (U16 Boys)',
+    coachName: 'Coach Mark',
+    division: 'U16 Boys',
+    teamLogo: 'https://placehold.co/80x80/8A2BE2/FFFFFF?text=JF',
+    players: [
+      { id: 'p5', name: 'Player Five', jerseyNumber: 9, position: 'Forward', email: 'p5@example.com', avatar: 'https://placehold.co/40x40/8A2BE2/FFFFFF?text=P5' },
+    ],
+  },
+];
 
 const TeamsManager = () => {
-  const router = useRouter();
-  const [teams, setTeams] = useState<Team[]>([]);
-  const [players, setPlayers] = useState<Player[]>([]); // All players, will be filtered by selectedTeamForPlayers
+  const router = useRouter(); // Initialize useRouter
+  const [teams, setTeams] = useState<Team[]>(DUMMY_TEAMS);
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedTeamForPlayers, setSelectedTeamForPlayers] = useState<Team | null>(null);
+  const [selectedTeamForPlayers, setSelectedTeamForPlayers] = useState<Team | null>(null); // State to manage which team's players are being viewed/managed
 
+  // State for Add/Edit Team forms
   const [showAddTeamForm, setShowAddTeamForm] = useState(false);
-  const [editingTeam, setEditingTeam] = useState<Team | null>(null);
+  const [editingTeam, setEditingTeam] = useState<Team | null>(null); // Stores team data for editing
 
+  // State for Add/Edit Player forms
   const [showAddPlayerForm, setShowAddPlayerForm] = useState(false);
-  const [editingPlayer, setEditingPlayer] = useState<Player | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  // --- Firebase Data Fetching ---
-  useEffect(() => {
-    const fetchTeamsAndPlayers = async () => {
-      setLoading(true);
-      try {
-        // Fetch Teams
-        const teamsColRef = collection(db, 'teams');
-        const teamSnapshot = await getDocs(teamsColRef);
-        const fetchedTeams: Team[] = teamSnapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        })) as Team[];
-        setTeams(fetchedTeams);
-
-        // Fetch Players
-        const playersColRef = collection(db, 'players');
-        const playerSnapshot = await getDocs(playersColRef);
-        const fetchedPlayers: Player[] = playerSnapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        })) as Player[];
-        setPlayers(fetchedPlayers);
-
-      } catch (error) {
-        console.error("Error fetching data: ", error);
-        Alert.alert("Error", "Failed to fetch teams or players. Please try again.");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchTeamsAndPlayers();
-  }, []); // Empty dependency array means this runs once on mount
+  const [editingPlayer, setEditingPlayer] = useState<Player | null>(null); // Stores player data for editing
 
   // Filter teams based on search query (memoized for performance)
   const filteredTeams = useMemo(() => {
@@ -96,13 +95,6 @@ const TeamsManager = () => {
       (team.division && team.division.toLowerCase().includes(searchQuery.toLowerCase()))
     );
   }, [teams, searchQuery]);
-
-  // Players for the currently selected team
-  const playersInSelectedTeam = useMemo(() => {
-    if (!selectedTeamForPlayers) return [];
-    return players.filter(player => player.teamId === selectedTeamForPlayers.id);
-  }, [players, selectedTeamForPlayers]);
-
 
   // --- Team Management Functions ---
 
@@ -118,29 +110,10 @@ const TeamsManager = () => {
         { text: 'Cancel', style: 'cancel' },
         {
           text: 'Delete',
-          onPress: async () => {
-            try {
-              // Delete team from Firestore
-              await deleteDoc(doc(db, 'teams', teamId));
-              setTeams(prevTeams => prevTeams.filter(team => team.id !== teamId));
-
-              // Delete associated players from Firestore
-              const playersToDeleteQuery = query(collection(db, 'players'), where("teamId", "==", teamId));
-              const playerSnapshot = await getDocs(playersToDeleteQuery);
-              const batch = db.batch(); // Use a batch write for efficiency
-              playerSnapshot.docs.forEach((d) => {
-                batch.delete(d.ref);
-              });
-              await batch.commit();
-
-              setPlayers(prevPlayers => prevPlayers.filter(player => player.teamId !== teamId)); // Update local state
-
-              console.log(`Team ${teamId} and its players deleted.`);
-              Alert.alert("Success", "Team and players deleted successfully!");
-            } catch (error) {
-              console.error("Error deleting team and players: ", error);
-              Alert.alert("Error", "Failed to delete team and players. Please try again.");
-            }
+          onPress: () => {
+            setTeams(prevTeams => prevTeams.filter(team => team.id !== teamId));
+            console.log(`Team ${teamId} deleted.`);
+            // In a real app, call API to delete team and its players from backend
           },
           style: 'destructive',
         },
@@ -204,17 +177,18 @@ const TeamsManager = () => {
         { text: 'Cancel', style: 'cancel' },
         {
           text: 'Remove',
-          onPress: async () => {
-            try {
-              // Delete player from Firestore
-              await deleteDoc(doc(db, 'players', playerId));
-              setPlayers(prevPlayers => prevPlayers.filter(player => player.id !== playerId)); // Update local state
-              Alert.alert("Success", "Player removed successfully!");
-              console.log(`Player ${playerId} removed from ${selectedTeamForPlayers.name}.`);
-            } catch (error) {
-              console.error("Error removing player: ", error);
-              Alert.alert("Error", "Failed to remove player. Please try again.");
-            }
+          onPress: () => {
+            setTeams(prevTeams =>
+              prevTeams.map(team =>
+                team.id === selectedTeamForPlayers.id
+                  ? { ...team, players: team.players.filter(player => player.id !== playerId) }
+                  : team
+              )
+            );
+            // Update selectedTeamForPlayers state to reflect the change immediately
+            setSelectedTeamForPlayers(prev => prev ? { ...prev, players: prev.players.filter(p => p.id !== playerId) } : null);
+            console.log(`Player ${playerId} removed from ${selectedTeamForPlayers.name}.`);
+            // In a real app, call API to update team's player list
           },
           style: 'destructive',
         },
@@ -237,9 +211,7 @@ const TeamsManager = () => {
       <View style={styles.teamInfo}>
         <Text style={styles.teamName}>{item.name}</Text>
         <Text style={styles.teamDetails}>Coach: {item.coachName || 'N/A'} | {item.division || 'N/A'}</Text>
-        <Text style={styles.teamPlayerCount}>
-          {players.filter(p => p.teamId === item.id).length} Players
-        </Text>
+        <Text style={styles.teamPlayerCount}>{item.players.length} Players</Text>
       </View>
       <View style={styles.teamActions}>
         <TouchableOpacity onPress={() => handleEditTeam(item)} style={styles.actionIcon}>
@@ -257,7 +229,7 @@ const TeamsManager = () => {
         <MaterialIcons name="arrow-forward-ios" size={16} color="#fff" style={{ marginLeft: 5 }} />
       </TouchableOpacity>
     </View>
-  ), [handleEditTeam, handleDeleteTeam, handleManagePlayers, players]);
+  ), [handleEditTeam, handleDeleteTeam, handleManagePlayers]);
 
   /**
    * Renders a single Player Item when managing players for a specific team.
@@ -294,37 +266,24 @@ const TeamsManager = () => {
     const [division, setDivision] = useState('');
     const [teamLogo, setTeamLogo] = useState('');
 
-    const handleSave = async () => {
+    const handleSave = () => {
       if (!name.trim() || !coachName.trim()) {
         Alert.alert('Missing Info', 'Team name and coach name are required.');
         return;
       }
 
-      try {
-        const teamRef = collection(db, 'teams');
-        const newTeamDoc = await addDoc(teamRef, {
-          name: name.trim(),
-          coachName: coachName.trim(),
-          division: division.trim() || undefined,
-          teamLogo: teamLogo.trim() || undefined,
-          createdAt: new Date(), // Add a timestamp
-        });
+      const newTeam: Team = {
+        id: `t${Date.now()}`, // Simple unique ID
+        name: name.trim(),
+        coachName: coachName.trim(),
+        division: division.trim() || undefined,
+        teamLogo: teamLogo.trim() || undefined,
+        players: [],
+      };
 
-        const newTeam: Team = {
-          id: newTeamDoc.id,
-          name: name.trim(),
-          coachName: coachName.trim(),
-          division: division.trim() || undefined,
-          teamLogo: teamLogo.trim() || undefined,
-        };
-
-        setTeams(prev => [...prev, newTeam]);
-        Alert.alert('Success', `${name} added successfully!`);
-        setShowAddTeamForm(false); // Close form
-      } catch (error) {
-        console.error("Error adding team: ", error);
-        Alert.alert("Error", "Failed to add team. Please try again.");
-      }
+      setTeams(prev => [...prev, newTeam]);
+      Alert.alert('Success', `${name} added successfully!`);
+      setShowAddTeamForm(false); // Close form
     };
 
     return (
@@ -377,50 +336,37 @@ const TeamsManager = () => {
         </View>
       </ScrollView>
     );
-  }, []);
+  }, []); // No dependencies as it manages its own internal state
 
   const EditTeamForm = useCallback(() => {
-    if (!editingTeam) return null;
+    if (!editingTeam) return null; // Should not happen if rendered correctly
 
     const [name, setName] = useState(editingTeam.name);
     const [coachName, setCoachName] = useState(editingTeam.coachName || '');
     const [division, setDivision] = useState(editingTeam.division || '');
     const [teamLogo, setTeamLogo] = useState(editingTeam.teamLogo || '');
 
-    const handleSave = async () => {
+    const handleSave = () => {
       if (!name.trim() || !coachName.trim()) {
         Alert.alert('Missing Info', 'Team name and coach name are required.');
         return;
       }
 
-      try {
-        const teamDocRef = doc(db, 'teams', editingTeam.id);
-        await updateDoc(teamDocRef, {
-          name: name.trim(),
-          coachName: coachName.trim(),
-          division: division.trim() || undefined,
-          teamLogo: teamLogo.trim() || undefined,
-        });
-
-        setTeams(prevTeams =>
-          prevTeams.map(team =>
-            team.id === editingTeam.id
-              ? {
+      setTeams(prevTeams =>
+        prevTeams.map(team =>
+          team.id === editingTeam.id
+            ? {
                 ...team,
                 name: name.trim(),
                 coachName: coachName.trim(),
                 division: division.trim() || undefined,
                 teamLogo: teamLogo.trim() || undefined,
               }
-              : team
-          )
-        );
-        Alert.alert('Success', `${name} updated successfully!`);
-        setEditingTeam(null); // Close form
-      } catch (error) {
-        console.error("Error updating team: ", error);
-        Alert.alert("Error", "Failed to update team. Please try again.");
-      }
+            : team
+        )
+      );
+      Alert.alert('Success', `${name} updated successfully!`);
+      setEditingTeam(null); // Close form
     };
 
     return (
@@ -469,7 +415,7 @@ const TeamsManager = () => {
         </View>
       </ScrollView>
     );
-  }, [editingTeam]);
+  }, [editingTeam]); // Re-render if editingTeam changes
 
   const AddPlayerForm = useCallback(() => {
     if (!selectedTeamForPlayers) return null;
@@ -480,41 +426,33 @@ const TeamsManager = () => {
     const [email, setEmail] = useState('');
     const [avatar, setAvatar] = useState('');
 
-    const handleSave = async () => {
+    const handleSave = () => {
       if (!name.trim()) {
         Alert.alert('Missing Info', 'Player name is required.');
         return;
       }
 
-      try {
-        const playerRef = collection(db, 'players');
-        const newPlayerDoc = await addDoc(playerRef, {
-          teamId: selectedTeamForPlayers.id, // Crucial link
-          name: name.trim(),
-          jerseyNumber: jerseyNumber ? parseInt(jerseyNumber, 10) : undefined,
-          position: position.trim() || undefined,
-          email: email.trim() || undefined,
-          avatar: avatar.trim() || undefined,
-          createdAt: new Date(),
-        });
+      const newPlayer: Player = {
+        id: `p${Date.now()}`, // Simple unique ID
+        name: name.trim(),
+        jerseyNumber: jerseyNumber ? parseInt(jerseyNumber, 10) : undefined,
+        position: position.trim() || undefined,
+        email: email.trim() || undefined,
+        avatar: avatar.trim() || undefined,
+      };
 
-        const newPlayer: Player = {
-          id: newPlayerDoc.id,
-          teamId: selectedTeamForPlayers.id,
-          name: name.trim(),
-          jerseyNumber: jerseyNumber ? parseInt(jerseyNumber, 10) : undefined,
-          position: position.trim() || undefined,
-          email: email.trim() || undefined,
-          avatar: avatar.trim() || undefined,
-        };
+      setTeams(prevTeams =>
+        prevTeams.map(team =>
+          team.id === selectedTeamForPlayers.id
+            ? { ...team, players: [...team.players, newPlayer] }
+            : team
+        )
+      );
+      // Update selectedTeamForPlayers to reflect the new player immediately
+      setSelectedTeamForPlayers(prev => prev ? { ...prev, players: [...prev.players, newPlayer] } : null);
 
-        setPlayers(prev => [...prev, newPlayer]);
-        Alert.alert('Success', `${name} added to ${selectedTeamForPlayers.name}!`);
-        setShowAddPlayerForm(false); // Close form
-      } catch (error) {
-        console.error("Error adding player: ", error);
-        Alert.alert("Error", "Failed to add player. Please try again.");
-      }
+      Alert.alert('Success', `${name} added to ${selectedTeamForPlayers.name}!`);
+      setShowAddPlayerForm(false); // Close form
     };
 
     return (
@@ -534,7 +472,7 @@ const TeamsManager = () => {
         <TextInput
           style={styles.formInput}
           value={jerseyNumber}
-          onChangeText={text => setJerseyNumber(text.replace(/[^0-9]/g, ''))}
+          onChangeText={text => setJerseyNumber(text.replace(/[^0-9]/g, ''))} // Only allow numbers
           keyboardType="numeric"
           placeholder="e.g., 23"
           placeholderTextColor="#999"
@@ -578,7 +516,7 @@ const TeamsManager = () => {
         </View>
       </ScrollView>
     );
-  }, [selectedTeamForPlayers]);
+  }, [selectedTeamForPlayers]); // Re-render if selectedTeamForPlayers changes
 
   const EditPlayerForm = useCallback(() => {
     if (!editingPlayer || !selectedTeamForPlayers) return null;
@@ -589,42 +527,55 @@ const TeamsManager = () => {
     const [email, setEmail] = useState(editingPlayer.email || '');
     const [avatar, setAvatar] = useState(editingPlayer.avatar || '');
 
-    const handleSave = async () => {
+    const handleSave = () => {
       if (!name.trim()) {
         Alert.alert('Missing Info', 'Player name is required.');
         return;
       }
 
-      try {
-        const playerDocRef = doc(db, 'players', editingPlayer.id);
-        await updateDoc(playerDocRef, {
-          name: name.trim(),
-          jerseyNumber: jerseyNumber ? parseInt(jerseyNumber, 10) : undefined,
-          position: position.trim() || undefined,
-          email: email.trim() || undefined,
-          avatar: avatar.trim() || undefined,
-        });
-
-        setPlayers(prevPlayers =>
-          prevPlayers.map(player =>
-            player.id === editingPlayer.id
-              ? {
-                ...player,
-                name: name.trim(),
-                jerseyNumber: jerseyNumber ? parseInt(jerseyNumber, 10) : undefined,
-                position: position.trim() || undefined,
-                email: email.trim() || undefined,
-                avatar: avatar.trim() || undefined,
+      setTeams(prevTeams =>
+        prevTeams.map(team =>
+          team.id === selectedTeamForPlayers.id
+            ? {
+                ...team,
+                players: team.players.map(player =>
+                  player.id === editingPlayer.id
+                    ? {
+                        ...player,
+                        name: name.trim(),
+                        jerseyNumber: jerseyNumber ? parseInt(jerseyNumber, 10) : undefined,
+                        position: position.trim() || undefined,
+                        email: email.trim() || undefined,
+                        avatar: avatar.trim() || undefined,
+                      }
+                    : player
+                ),
               }
-              : player
-          )
-        );
-        Alert.alert('Success', `${name} updated successfully!`);
-        setEditingPlayer(null); // Close form
-      } catch (error) {
-        console.error("Error updating player: ", error);
-        Alert.alert("Error", "Failed to update player. Please try again.");
-      }
+            : team
+        )
+      );
+      // Update selectedTeamForPlayers to reflect the changes immediately
+      setSelectedTeamForPlayers(prev => {
+        if (!prev) return null;
+        return {
+          ...prev,
+          players: prev.players.map(p =>
+            p.id === editingPlayer.id
+              ? {
+                  ...p,
+                  name: name.trim(),
+                  jerseyNumber: jerseyNumber ? parseInt(jerseyNumber, 10) : undefined,
+                  position: position.trim() || undefined,
+                  email: email.trim() || undefined,
+                  avatar: avatar.trim() || undefined,
+                }
+              : p
+          ),
+        };
+      });
+
+      Alert.alert('Success', `${name} updated successfully!`);
+      setEditingPlayer(null); // Close form
     };
 
     return (
@@ -643,7 +594,7 @@ const TeamsManager = () => {
         <TextInput
           style={styles.formInput}
           value={jerseyNumber}
-          onChangeText={text => setJerseyNumber(text.replace(/[^0-9]/g, ''))}
+          onChangeText={text => setJerseyNumber(text.replace(/[^0-9]/g, ''))} // Only allow numbers
           keyboardType="numeric"
           placeholderTextColor="#999"
         />
@@ -684,14 +635,15 @@ const TeamsManager = () => {
         </View>
       </ScrollView>
     );
-  }, [editingPlayer, selectedTeamForPlayers]);
+  }, [editingPlayer, selectedTeamForPlayers]); // Re-render if editingPlayer or selectedTeamForPlayers change
 
   // --- Determine current view and header content ---
   const getHeaderContent = () => {
     let title = 'Manage Teams';
-    let showBackButton = true;
-    let rightButton = <View style={styles.headerButtonPlaceholder} />;
-    let onBackPress = () => router.push('./../admin/Dashboard');
+    let showBackButton = true; // By default, show back button to dashboard
+    let rightButton = <View style={styles.headerButtonPlaceholder} />; // Default: no right button
+
+    let onBackPress = () => router.push('./../admin/Dashboard'); // Default back to Dashboard
 
     if (showAddTeamForm) {
       title = 'Add New Team';
@@ -706,28 +658,22 @@ const TeamsManager = () => {
       title = `Edit Player: ${editingPlayer.name}`;
       onBackPress = () => setEditingPlayer(null);
     } else if (selectedTeamForPlayers) {
+      // Viewing players for a specific team
       title = `Players for ${selectedTeamForPlayers.name}`;
-      rightButton = (
+      rightButton = ( // Add Player button in header when viewing players
         <TouchableOpacity style={styles.addPlayerButton} onPress={handleAddPlayerToTeam}>
           <MaterialIcons name="person-add" size={24} color="#fff" />
         </TouchableOpacity>
       );
-      onBackPress = () => setSelectedTeamForPlayers(null);
+      onBackPress = () => setSelectedTeamForPlayers(null); // Back to team list
     }
+    // For the main "Manage Teams" view, the add team button is now a floating button,
+    // so no right button in the header is needed there.
 
     return { title, showBackButton, rightButton, onBackPress };
   };
 
   const { title, showBackButton, rightButton, onBackPress } = getHeaderContent();
-if (loading) {
-  return (
-    <View style={styles.loadingContainer}>
-      <ActivityIndicator size="large" color="#007AFF" />
-      <Text style={styles.loadingText}>Loading data...</Text>
-    </View>
-  );
-}
-
 
   // --- Main Component Render ---
   return (
@@ -743,10 +689,10 @@ if (loading) {
             <MaterialIcons name="arrow-back" size={24} color="#333" />
           </TouchableOpacity>
         ) : (
-          <View style={styles.headerButtonPlaceholder} />
+          <View style={styles.headerButtonPlaceholder} /> // Placeholder for alignment
         )}
         <Image
-          source={require('../../../assets/images/logo.jpeg')}
+          source={require('../../../assets/images/logo.jpeg')} // Update this path
           style={styles.headerLogo}
           resizeMode="contain"
         />
@@ -766,7 +712,7 @@ if (loading) {
       ) : selectedTeamForPlayers ? (
         // --- Player Management View ---
         <FlatList
-          data={playersInSelectedTeam}
+          data={selectedTeamForPlayers.players}
           keyExtractor={(item) => item.id}
           renderItem={renderPlayerItem}
           contentContainerStyle={styles.listContent}
@@ -1107,19 +1053,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 5,
   },
-
-  loadingContainer: {
-  flex: 1,
-  justifyContent: 'center',
-  alignItems: 'center',
-  backgroundColor: '#f0f2f5',
-},
-loadingText: {
-  marginTop: 10,
-  fontSize: 16,
-  color: '#666',
-},
-
 });
 
 export default TeamsManager;
