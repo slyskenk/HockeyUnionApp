@@ -1,50 +1,95 @@
-# Welcome to your Expo app 👋
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+---
 
-## Get started
+# 🏒 HockeyUnionApp
 
-1. Install dependencies
+Welcome to **HockeyUnionApp** – your all-in-one mobile solution for managing and exploring hockey teams, matches, and league activities.  
+Built with [Expo](https://expo.dev), this app runs seamlessly across **Android**, **iOS**, and the **web**.
 
+---
+
+## 🚀 Features
+
+- 📅 **Match Scheduling** – Stay updated with upcoming games and events  
+- 🏆 **Team Management** – Browse team rosters and player statistics  
+- 📊 **Live Scores** – Get real-time match updates  
+- 🖼️ **Modern UI** – Sleek, responsive design for all screen sizes  
+- 🌐 **Cross-Platform** – Unified experience on mobile and web  
+
+---
+
+## 📱 Screenshots
+
+| ![Screenshot 1](./assets/screenshot/1.jpg) | ![Screenshot 2](./assets/screenshot/2.jpg) | ![Screenshot 3](./assets/screenshot/3.jpg) |
+|-------------------------------------------|-------------------------------------------|-------------------------------------------|
+| ![Screenshot 4](./assets/screenshots/4.jpg) | ![Screenshot 5](./assets/screenshot/5.jpg) | ![Screenshot 6](./assets/screenshot/6.jpg) |
+| ![Screenshot 7](./assets/screenshot/7.jpg) |                                           |                                           |
+
+
+---
+
+## 🛠️ Installation & Setup
+
+1. **Clone the repository**
    ```bash
-   npm install
+   git clone https://github.com/slyskenk/HockeyUnionApp.git
+   cd HockeyUnionApp
    ```
 
-2. Start the app
+2. **Install core dependencies**
+   ```bash
+   npm install --force
+   ```
 
+3. **Install additional packages**
+   ```bash
+   npm install @google/generative-ai --force
+   npm install --save-dev dotenv --force
+   npm install expo-linear-gradient @expo/vector-icons react-native-dotenv --force
+   npm install expo-constants @expo/vector-icons --force
+   npm install --save-dev @types/react-native --force
+   npm install tslib --force
+   expo install @react-native-picker/picker --force
+   ```
+
+4. **Start the app**
    ```bash
    npx expo start
    ```
 
-In the output, you'll find options to open the app in a
+---
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+## 📂 Project Structure
 
-## Get a fresh project
-
-When you're ready, run:
-
-```bash
-npm run reset-project
+```
+HockeyUnionApp/
+├── app/              # Main app directory (file-based routing)
+├── assets/           # Images, fonts, etc.
+├── components/       # Reusable UI components
+├── package.json
+└── README.md
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+---
 
-## Learn more
+## 📖 Learn More
 
-To learn more about developing your project with Expo, look at the following resources:
+- [Expo Documentation](https://docs.expo.dev/)
+- [React Native Docs](https://reactnative.dev/)
+- [Expo Router Guide](https://docs.expo.dev/router/introduction/)
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+---
 
-## Join the community
+## 📜 License
 
-Join our community of developers creating universal apps.
+This project is licensed under the **MIT License**.
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+---
+
+## 🌟 Show Your Support
+
+If you find this project helpful, please consider giving it a ⭐ on GitHub!
+
+---
+
