@@ -22,8 +22,9 @@ Built with [Expo](https://expo.dev), this app runs seamlessly across **Android**
 
 | ![Screenshot 1](./assets/screenshot/1.jpg) | ![Screenshot 2](./assets/screenshot/2.jpg) | ![Screenshot 3](./assets/screenshot/3.jpg) |
 |-------------------------------------------|-------------------------------------------|-------------------------------------------|
-| ![Screenshot 4](./assets/screenshots/4.jpg) | ![Screenshot 5](./assets/screenshot/5.jpg) | ![Screenshot 6](./assets/screenshot/6.jpg) |
-| ![Screenshot 7](./assets/screenshot/7.jpg) |                                           |                                           |
+| ![Screenshot 4](./assets//screenshot/4.jpg) | ![Screenshot 5](./assets/screenshot/5.jpg) | ![Screenshot 6](./assets/screenshot/6.jpg) |
+|-------------------------------------------|-------------------------------------------|-------------------------------------------|
+| ![Screenshot 7](./assets/screenshot/7.jpg) |
 
 
 ---
