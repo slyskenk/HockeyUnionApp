@@ -10,6 +10,7 @@ Built with [Expo](https://expo.dev), this app runs seamlessly across **Android**
 ## Made Use of an API to Create Live Feed Data of News
 
 | ![News 1](./assets/screenshot/news1.png) | ![News 2](./assets/screenshot/news2.png) | ![News 3](./assets/screenshot/news3.png) |
+| ---------------------------------------- | ---------------------------------------- | ---------------------------------------- |
 
 ## 🚀 Features
 
